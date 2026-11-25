@@ -7,7 +7,7 @@ Backend FastAPI (Python) + caixa de entrada web em tempo real. Multi-tenant. Fun
 .\run.ps1          # sobe em http://127.0.0.1:8000
 .\test.ps1         # roda os testes
 ```
-Em http://127.0.0.1:8000 fica o **site de vendas** (`app/static/site/index.html`, uma página única); o sistema de atendimento fica em http://127.0.0.1:8000/app/. Antes de publicar o site: trocar o nome provisório da marca e confirmar os preços (ver `docs/PRICING.md`).
+Em http://127.0.0.1:8000 fica o **site de vendas** (`app/static/site/index.html`, uma página única); o sistema de atendimento fica em http://127.0.0.1:8000/app/. O site público está em https://plataforma-atendimento-ia.github.io/plataforma-atendimento.io/ e é republicado sozinho (GitHub Pages, `.github/workflows/pages.yml`) a cada mudança em `app/static/site/`. Como o sistema não está hospedado, os botões do site levam ao fim da página; quando houver um endereço para o sistema, crie a variável `APP_URL` em Settings > Secrets and variables > Actions > Variables. Antes de divulgar: trocar o nome provisório da marca e confirmar os preços (ver `docs/PRICING.md`).
 
 No sistema (/app/), clique em **Criar conta da empresa**, depois em **Simular cliente** para gerar uma conversa. Abra uma segunda janela anônima com outro usuário (admin cria atendentes em `POST /users`, docs em `/docs`) para testar "assumir" simultâneo.
 
