@@ -1,0 +1,299 @@
+<title>Plataforma de Atendimento IA</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: página de apresentação em coluna única; demo interativa no centro; tabelas e roadmap abaixo. */
+:root{
+  --bg:#f4f6f5; --surface:#ffffff; --ink:#15211f; --mute:#5b6b68; --line:#dbe3e0;
+  --accent:#0d6b5c; --accent-ink:#ffffff; --accent-soft:#dff1ec;
+  --warn:#9a5b00; --warn-soft:#fbefd9; --bad:#b3372b; --bad-soft:#fbe3df; --ok:#1f7a4d; --ok-soft:#dcf1e4;
+  --display:'Space Grotesk',system-ui,sans-serif; --body:'Inter',system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1514; --surface:#172120; --ink:#e6eeec; --mute:#95a7a3; --line:#2a3836;
+  --accent:#48c2a9; --accent-ink:#06201b; --accent-soft:#16332e;
+  --warn:#e8b25a; --warn-soft:#33270f; --bad:#ef7d70; --bad-soft:#3a1c18; --ok:#5fcf93; --ok-soft:#14301f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1514; --surface:#172120; --ink:#e6eeec; --mute:#95a7a3; --line:#2a3836;
+  --accent:#48c2a9; --accent-ink:#06201b; --accent-soft:#16332e;
+  --warn:#e8b25a; --warn-soft:#33270f; --bad:#ef7d70; --bad-soft:#3a1c18; --ok:#5fcf93; --ok-soft:#14301f; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.6 var(--body);padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px));padding-block:0}
+.wrap{max-width:1040px;margin:0 auto;display:grid;gap:56px;padding-block:48px 72px}
+h1,h2,h3{font-family:var(--display);line-height:1.15;margin:0;text-wrap:balance}
+h1{font-size:clamp(30px,5vw,48px);letter-spacing:-.02em;max-width:18ch}
+h2{font-size:clamp(22px,3vw,28px);letter-spacing:-.01em}
+h3{font-size:16px}
+p{margin:0}
+.lead{font-size:clamp(16px,2vw,19px);color:var(--mute);max-width:62ch;margin-top:16px}
+.eyebrow{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:12px}
+.sec>p.sub{color:var(--mute);margin-top:8px;max-width:64ch}
+.sec>.body{margin-top:22px}
+.pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+.pill{font-size:12.5px;padding:4px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-weight:500}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px;min-width:0}
+.card h3{margin-bottom:10px}
+.card ul{margin:0;padding-left:18px;display:grid;gap:6px}
+.card li{color:var(--ink)} .card li::marker{color:var(--mute)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:560px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);font-weight:600}
+td.n,th.n{text-align:right}
+.note{font-size:13px;color:var(--mute);margin-top:10px}
+.callout{border-left:3px solid var(--warn);background:var(--warn-soft);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:16px}
+
+/* Demo */
+.demo{display:grid;grid-template-columns:280px 1fr;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface);min-height:460px}
+.d-list{border-right:1px solid var(--line);display:flex;flex-direction:column;min-width:0}
+.d-top{padding:10px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.d-conv{padding:10px 14px;border-bottom:1px solid var(--line);cursor:pointer;display:grid;gap:2px}
+.d-conv:hover,.d-conv.sel{background:var(--bg)}
+.d-conv b{font-weight:600}.d-conv small{color:var(--mute)}
+.d-chat{display:flex;flex-direction:column;min-width:0}
+.d-head{padding:10px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;min-height:54px}
+.d-msgs{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:8px;max-height:300px;min-height:200px}
+.m{max-width:78%;padding:8px 12px;border-radius:12px;background:var(--bg);border:1px solid var(--line);align-self:flex-start;overflow-wrap:anywhere}
+.m.out{align-self:flex-end;background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.m.out.failed{background:var(--bad);border-color:var(--bad);color:#fff}
+.m .meta{font-size:12px;opacity:.9;margin-top:3px}
+.d-bar{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line)}
+.d-opts{padding:8px 14px;border-top:1px solid var(--line);display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--mute)}
+button{font:inherit;font-size:13.5px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:6px 11px;border-radius:8px}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:500}
+button.mini{padding:2px 8px;font-size:12px;margin-left:6px;background:transparent;color:inherit;border-color:currentColor}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input[type=text]{flex:1;min-width:0;font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.log{margin-top:12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font:12.5px/1.7 ui-monospace,Consolas,monospace;color:var(--mute);height:150px;overflow:auto}
+.log div b{color:var(--ink);font-weight:600}
+.empty{margin:auto;color:var(--mute);padding:20px;text-align:center}
+@media (max-width:720px){.demo{grid-template-columns:1fr}.d-list{border-right:0;border-bottom:1px solid var(--line);max-height:220px;overflow:auto}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Apresentação para os sócios · Fase 0 e 1–2 concluídas</div>
+    <h1>Atendimento com IA que não perde mensagem.</h1>
+    <p class="lead">Plataforma para qualquer empresa atender clientes no WhatsApp: a IA aprende com as informações da própria empresa, e o atendente humano assume sem travar. Feita para corrigir as duas dores que vimos no Amplific: falha de envio e travamento ao assumir cliente da fila.</p>
+    <div class="pills">
+      <span class="pill ok">14 testes automatizados passando</span>
+      <span class="pill">Python · FastAPI</span>
+      <span class="pill warn">WhatsApp ainda simulado</span>
+      <span class="pill warn">IA ainda não implementada</span>
+    </div>
+  </header>
+
+  <section class="sec" id="demo">
+    <h2>Teste você mesmo</h2>
+    <p class="sub">Esta demonstração roda aqui na página, sem servidor, imitando o comportamento do sistema real. Assuma uma conversa, responda e ative a instabilidade para ver o reenvio automático.</p>
+    <div class="body">
+      <div class="demo">
+        <div class="d-list">
+          <div class="d-top">
+            <button class="primary" id="btnSim">+ Simular cliente</button>
+          </div>
+          <div id="list"></div>
+        </div>
+        <div class="d-chat">
+          <div class="d-head"><strong id="title">Nenhuma conversa selecionada</strong>
+            <span id="actions"></span></div>
+          <div class="d-msgs" id="msgs"><div class="empty">Selecione uma conversa na lista.</div></div>
+          <div class="d-opts">
+            <label><input type="checkbox" id="flaky"> Simular instabilidade no WhatsApp</label>
+          </div>
+          <div class="d-bar"><input type="text" id="text" placeholder="Digite a resposta…" aria-label="Resposta"><button class="primary" id="btnSend">Enviar</button></div>
+        </div>
+      </div>
+      <div class="log" id="log" aria-live="polite"></div>
+      <p class="note">Na demo o envio tenta 3 vezes antes de marcar falha, para ficar rápido. No sistema real são 6 tentativas com espera crescente (1 s, 5 s, 30 s, 2 min, 10 min).</p>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>As duas dores do Amplific, resolvidas por projeto</h2>
+    <div class="body grid2">
+      <div class="card"><h3>Falha no envio de mensagem</h3>
+        <ul>
+          <li>Toda resposta é gravada no banco antes de qualquer envio.</li>
+          <li>Um worker envia, tenta de novo se der erro e nunca descarta em silêncio.</li>
+          <li>O atendente vê o status real: na fila, enviada, entregue, lida ou falhou, com o motivo e o botão Reenviar.</li>
+          <li>Se o sistema cair no meio do envio, a mensagem volta sozinha para a fila.</li>
+        </ul></div>
+      <div class="card"><h3>Travamento ao assumir da fila</h3>
+        <ul>
+          <li>Assumir é uma operação única no banco: só um atendente vence.</li>
+          <li>Quem perde recebe aviso na hora, sem a tela travar.</li>
+          <li>Tudo atualiza em tempo real por WebSocket, sem recarregar a página.</li>
+          <li>Cada atendente tem um limite de conversas simultâneas.</li>
+        </ul></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Onde estamos</h2>
+    <div class="body grid2">
+      <div class="card"><h3>Já funciona</h3>
+        <ul>
+          <li>Cadastro de empresas, login, administradores e atendentes.</li>
+          <li>Empresas isoladas entre si (coberto por testes).</li>
+          <li>Caixa de entrada em tempo real, assumir, transferir, encerrar.</li>
+          <li>Envio com retry, status de entrega e reenvio manual.</li>
+          <li>Recebimento pelo webhook do WhatsApp, sem duplicar mensagens.</li>
+        </ul></div>
+      <div class="card"><h3>Ainda não existe</h3>
+        <ul>
+          <li>Conexão com o WhatsApp real (falta criar a conta na Meta).</li>
+          <li>IA que responde, transfere com resumo e preenche o cadastro.</li>
+          <li>Setores, filas por regra, funil de vendas, notas e tags.</li>
+          <li>Cobrança com Stripe e painel de indicadores.</li>
+          <li>Teste de segurança em Postgres e teste de carga com 50 atendentes.</li>
+        </ul></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Produto aberto para qualquer empresa</h2>
+    <p class="sub">Sem vertical fixa. Ao contratar, a empresa informa site, documentos e responde um questionário curto. A IA propõe a configuração (tom de voz, regras, perguntas frequentes, campos do cadastro, etapas do funil) e o administrador revisa e aprova antes de ativar.</p>
+  </section>
+
+  <section class="sec">
+    <h2>Preços e margem</h2>
+    <p class="sub">Mensalidade com franquia de atendimentos, excedente por atendimento e o custo da Meta repassado em linha separada.</p>
+    <div class="body card scroll">
+      <table>
+        <thead><tr><th></th><th class="n">Starter</th><th class="n">Pro</th><th class="n">Business</th></tr></thead>
+        <tbody>
+          <tr><td>Mensalidade</td><td class="n">R$ 197</td><td class="n">R$ 497</td><td class="n">R$ 1.197</td></tr>
+          <tr><td>Atendimentos incluídos</td><td class="n">150</td><td class="n">500</td><td class="n">1.500</td></tr>
+          <tr><td>Excedente por atendimento</td><td class="n">R$ 1,50</td><td class="n">R$ 1,20</td><td class="n">R$ 0,90</td></tr>
+          <tr><td>Atendentes / números WhatsApp</td><td class="n">2 / 1</td><td class="n">5 / 1</td><td class="n">15 / 2</td></tr>
+          <tr><td>Margem bruta com repasse da Meta</td><td class="n">60%</td><td class="n">60%</td><td class="n">56%</td></tr>
+          <tr><td>Margem se absorvermos a Meta</td><td class="n">60%</td><td class="n">39%</td><td class="n">27%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout"><strong>Custo novo da Meta:</strong> desde 1º de outubro de 2026 as respostas dentro das 24 horas também são cobradas (cerca de R$ 0,035 por mensagem, depois das 1.000 grátis por número a cada mês). Por isso o custo da Meta vai em linha separada na fatura. A IA custa cerca de R$ 0,20 por atendimento usando o modelo menor para triagem e o médio para responder.</div>
+    <p class="note">Valores de simulação. Falta conferir a tabela oficial da Meta em reais (os números vieram de um site de terceiros), o câmbio e os impostos com um contador.</p>
+  </section>
+
+  <section class="sec">
+    <h2>Roteiro</h2>
+    <div class="body card scroll">
+      <table>
+        <thead><tr><th>Fase</th><th>Entrega</th><th>Situação</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td>Arquitetura, preços, decisões, riscos</td><td><span class="pill ok">Pronta</span></td></tr>
+          <tr><td>1</td><td>Base do sistema, login, empresas isoladas</td><td><span class="pill ok">Pronta</span></td></tr>
+          <tr><td>2</td><td>Mensagens confiáveis e caixa de entrada em tempo real</td><td><span class="pill ok">Pronta (WhatsApp simulado)</span></td></tr>
+          <tr><td>2b</td><td>Setores, filas, distribuição, funil de vendas</td><td><span class="pill">Próxima</span></td></tr>
+          <tr><td>3</td><td>IA com base de conhecimento, transferência com resumo, cadastro automático</td><td><span class="pill">Depois</span></td></tr>
+          <tr><td>4</td><td>Planos, cobrança, painel, onboarding adaptativo, LGPD</td><td><span class="pill">Depois</span></td></tr>
+          <tr><td>5</td><td>Beta fechado com 3 a 5 clientes reais</td><td><span class="pill warn">Precisamos achar os clientes</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Riscos e decisões para os sócios</h2>
+    <div class="body grid2">
+      <div class="card"><h3>Riscos principais</h3>
+        <ul>
+          <li>Bloqueio de número do WhatsApp: usamos só a API oficial.</li>
+          <li>IA inventar preço ou prazo: responde só com a base da empresa e transfere se não souber.</li>
+          <li>LGPD: especialmente em saúde e jurídico. Precisa de revisão jurídica antes do beta.</li>
+          <li>Ainda não temos clientes para o beta.</li>
+        </ul></div>
+      <div class="card"><h3>O que precisa de vocês</h3>
+        <ul>
+          <li>Criar a conta de desenvolvedor da Meta e verificar a empresa.</li>
+          <li>Criar a conta da Anthropic para a IA.</li>
+          <li>Escolher onde hospedar e quem paga a infraestrutura.</li>
+          <li>Indicar os primeiros 3 a 5 clientes para o beta.</li>
+          <li>Validar os preços com um contador.</li>
+        </ul></div>
+    </div>
+  </section>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const MAX=3; let uid=10, sel=null;
+const convs=[
+ {id:1,name:'Mariana Costa',phone:'+55 27 99811-2040',status:'queue',by:null,msgs:[{d:'in',b:'Oi! Vocês entregam amanhã em Vitória?'}]},
+ {id:2,name:'Roberto Lima',phone:'+55 27 99702-3318',status:'queue',by:null,msgs:[{d:'in',b:'Quero saber o valor do plano Pro.'}]},
+ {id:3,name:'Clínica Bem Viver',phone:'+55 27 3322-4000',status:'queue',by:null,msgs:[{d:'in',b:'Preciso reagendar uma consulta de sexta.'}]}
+];
+const ST={queued:'na fila…',sending:'enviando…',retry:'falhou, tentando de novo…',sent:'✓ enviada',delivered:'✓✓ entregue',read:'✓✓ lida',failed:'✗ falhou'};
+function log(t){const l=$('log');const e=document.createElement('div');e.innerHTML='<b>'+new Date().toLocaleTimeString('pt-BR')+'</b> '+esc(t);l.appendChild(e);l.scrollTop=1e9}
+function who(c){return c.status==='queue'?'aguardando na fila':c.by==='Você'?'com você':'com '+c.by}
+function renderList(){
+  $('list').innerHTML=convs.map(c=>`<div class="d-conv ${sel===c.id?'sel':''}" data-id="${c.id}"><b>${esc(c.name)}</b><small>${esc(c.msgs[c.msgs.length-1].b.slice(0,48))}</small><small>${who(c)}</small></div>`).join('');
+  document.querySelectorAll('.d-conv').forEach(e=>e.onclick=()=>{sel=+e.dataset.id;render()});
+}
+function renderChat(){
+  const c=convs.find(x=>x.id===sel);
+  if(!c){$('title').textContent='Nenhuma conversa selecionada';$('actions').innerHTML='';$('msgs').innerHTML='<div class="empty">Selecione uma conversa na lista.</div>';return}
+  $('title').textContent=c.name+' · '+c.phone;
+  $('actions').innerHTML=c.status==='queue'?'<button class="primary" id="bClaim">Assumir</button> <button id="bRace" title="Dois atendentes clicam no mesmo instante">Dois clicam juntos</button>':'<span class="pill">'+esc(who(c))+'</span>';
+  if($('bClaim'))$('bClaim').onclick=()=>claim(c);
+  if($('bRace'))$('bRace').onclick=()=>race(c);
+  $('msgs').innerHTML=c.msgs.map((m,i)=>`<div class="m ${m.d==='out'?'out':''} ${m.st==='failed'?'failed':''}">${esc(m.b)}${m.d==='out'?`<div class="meta">${ST[m.st]||''}${m.att>1&&m.st!=='failed'?' (tentativa '+m.att+')':''}${m.st==='failed'?` · motivo: ${esc(m.err)} <button class="mini" data-i="${i}">Reenviar</button>`:''}</div>`:''}</div>`).join('');
+  $('msgs').querySelectorAll('button.mini').forEach(b=>b.onclick=()=>resend(c,c.msgs[+b.dataset.i]));
+  $('msgs').scrollTop=1e9;
+}
+function render(){renderList();renderChat()}
+function claim(c){
+  if(c.status!=='queue'){log('Assumir recusado: outro atendente já pegou');return}
+  c.status='open';c.by='Você';log('Você assumiu '+c.name+' (uma única operação no banco)');render();
+}
+function race(c){
+  const win=Math.random()<.5?'Ana':'Carlos',lose=win==='Ana'?'Carlos':'Ana';
+  c.status='open';c.by=win;
+  log(win+' e '+lose+' clicaram juntos em '+c.name+': '+win+' assumiu; '+lose+' recebeu aviso imediato (409), sem travar');
+  render();
+}
+function rand(a,b){return a+Math.random()*(b-a)}
+function deliver(c,m){
+  m.st='queued';m.att=m.att||0;render();log('outbox: mensagem gravada como "na fila" antes de enviar');
+  const attempt=()=>{
+    m.st='sending';m.att++;render();
+    setTimeout(()=>{
+      if($('flaky').checked){
+        m.err='WhatsApp indisponível (503)';
+        if(m.att<MAX){m.st='retry';log('outbox: tentativa '+m.att+' falhou, nova tentativa em '+m.att+' s');render();setTimeout(attempt,m.att*1000)}
+        else{m.st='failed';log('outbox: esgotou as tentativas; o atendente vê o erro e pode reenviar');render()}
+      }else{
+        m.st='sent';m.err=null;log('outbox: enviada na tentativa '+m.att);render();
+        setTimeout(()=>{m.st='delivered';log('webhook Meta: entregue');render()},900);
+        setTimeout(()=>{m.st='read';log('webhook Meta: lida');render()},2200);
+      }
+    },600);
+  };
+  attempt();
+}
+function resend(c,m){m.att=0;m.err=null;log('Atendente clicou em Reenviar');deliver(c,m)}
+function send(){
+  const c=convs.find(x=>x.id===sel);const t=$('text').value.trim();
+  if(!c||!t)return;
+  if(c.by!=='Você'){log('Bloqueado: assuma a conversa antes de responder');return}
+  $('text').value='';const m={d:'out',b:t,st:'queued',att:0};c.msgs.push(m);deliver(c,m);
+}
+$('btnSend').onclick=send;
+$('text').onkeydown=e=>{if(e.key==='Enter')send()};
+const FRESH=[['Paula Nunes','Vocês atendem aos sábados?'],['Grupo Orla','Gostaria de uma proposta para 20 usuários.'],['Fernando Alves','Meu pedido ainda não chegou.']];
+$('btnSim').onclick=()=>{
+  const [n,t]=FRESH[Math.floor(Math.random()*FRESH.length)];
+  convs.unshift({id:++uid,name:n,phone:'+55 27 9'+Math.floor(rand(1e7,1e8)),status:'queue',by:null,msgs:[{d:'in',b:t}]});
+  log('webhook: nova mensagem de '+n+' chegou à fila (tempo real)');render();
+};
+log('Demonstração pronta. Selecione uma conversa e clique em Assumir.');
+render();
+</script>

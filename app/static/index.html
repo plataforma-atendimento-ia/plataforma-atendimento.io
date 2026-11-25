@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atendimento</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --line:#e3e6ea; --ink:#1b1f24; --mute:#6b7480; --brand:#1f7a5c; --bad:#c0392b; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14171a; --card:#1d2227; --line:#2e353c; --ink:#e8ebee; --mute:#97a1ac; --brand:#3fb68b; --bad:#ec6b5e; } }
+  * { box-sizing:border-box } body { margin:0; font:15px system-ui,sans-serif; background:var(--bg); color:var(--ink); }
+  button { font:inherit; cursor:pointer; border:1px solid var(--line); background:var(--card); color:var(--ink); padding:7px 12px; border-radius:8px }
+  button.primary { background:var(--brand); border-color:var(--brand); color:#fff }
+  input { font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); width:100% }
+  #auth { max-width:360px; margin:10vh auto; padding:24px; background:var(--card); border:1px solid var(--line); border-radius:12px; display:grid; gap:10px }
+  #app { display:none; height:100vh; grid-template-columns:320px 1fr; grid-template-rows:auto 1fr }
+  header { grid-column:1/3; display:flex; justify-content:space-between; align-items:center; padding:10px 16px; background:var(--card); border-bottom:1px solid var(--line) }
+  aside { border-right:1px solid var(--line); overflow:auto; background:var(--card) }
+  .tabs { display:flex; gap:6px; padding:10px } .tabs button.on { background:var(--brand); color:#fff; border-color:var(--brand) }
+  .conv { padding:10px 14px; border-top:1px solid var(--line); cursor:pointer } .conv:hover,.conv.sel { background:var(--bg) }
+  .conv b { display:block } .conv small { color:var(--mute) }
+  main { display:flex; flex-direction:column; min-height:0 }
+  #msgs { flex:1; overflow:auto; padding:16px; display:flex; flex-direction:column; gap:8px }
+  .m { max-width:70%; padding:8px 12px; border-radius:12px; background:var(--card); border:1px solid var(--line); align-self:flex-start; white-space:pre-wrap }
+  .m.out { align-self:flex-end; background:var(--brand); color:#fff; border-color:var(--brand) }
+  .m.out.failed { background:var(--bad); border-color:var(--bad) }
+  .meta { font-size:12px; opacity:.85; margin-top:4px } .meta button { padding:2px 8px; font-size:12px; margin-left:6px }
+  #bar { display:flex; gap:8px; padding:12px; border-top:1px solid var(--line); background:var(--card) }
+  #empty { margin:auto; color:var(--mute) } .hide { display:none !important }
+  #toast { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:8px 14px; border-radius:8px; display:none }
+  @media (max-width:700px){ #app{grid-template-columns:1fr} aside{max-height:40vh} header{grid-column:1} }
+</style>
+</head>
+<body>
+<section id="auth">
+  <h2 style="margin:0">Plataforma de Atendimento</h2>
+  <input id="company" placeholder="Nome da empresa (só para criar conta)">
+  <input id="name" placeholder="Seu nome (só para criar conta)">
+  <input id="email" type="email" placeholder="E-mail">
+  <input id="password" type="password" placeholder="Senha (mín. 8 caracteres)">
+  <button class="primary" onclick="login()">Entrar</button>
+  <button onclick="register()">Criar conta da empresa</button>
+  <small id="autherr" style="color:var(--bad)"></small>
+</section>
+
+<div id="app">
+  <header>
+    <strong id="who"></strong>
+    <span><button onclick="simulate()" title="Simula um cliente escrevendo (modo mock)">Simular cliente</button> <button onclick="logout()">Sair</button></span>
+  </header>
+  <aside>
+    <div class="tabs">
+      <button data-v="all" class="on">Abertas</button><button data-v="queue">Fila</button><button data-v="mine">Minhas</button><button data-v="closed">Encerradas</button>
+    </div>
+    <div id="list"></div>
+  </aside>
+  <main>
+    <div id="empty">Selecione uma conversa</div>
+    <div id="chat" class="hide" style="display:flex;flex-direction:column;flex:1;min-height:0">
+      <div style="padding:10px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">
+        <strong id="ctitle"></strong>
+        <span><button id="claimBtn" class="primary" onclick="claim()">Assumir</button> <button onclick="closeConv()">Encerrar</button></span>
+      </div>
+      <div id="msgs"></div>
+      <div id="bar"><input id="text" placeholder="Digite a resposta..." onkeydown="if(event.key==='Enter')send()"><button class="primary" onclick="send()">Enviar</button></div>
+    </div>
+  </main>
+</div>
+<div id="toast"></div>
+
+<script>
+let token = null, me = null, view = 'all', convs = [], sel = null, ws = null;
+const $ = id => document.getElementById(id);
+const STATUS = { queued:'na fila…', sending:'enviando…', sent:'✓ enviada', delivered:'✓✓ entregue', read:'✓✓ lida', failed:'✗ falhou', received:'' };
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, { ...opts, headers: { 'Content-Type':'application/json', ...(token ? { Authorization:'Bearer '+token } : {}) }, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Erro ' + r.status);
+  return data;
+}
+function toast(t) { const e = $('toast'); e.textContent = t; e.style.display = 'block'; setTimeout(() => e.style.display = 'none', 2800); }
+
+async function enter(data) {
+  token = data.token; me = data.user; try { localStorage.setItem('tk', token); } catch {}
+  $('auth').style.display = 'none'; $('app').style.display = 'grid'; $('who').textContent = me.name + ' · ' + me.role;
+  await loadList(); connect();
+}
+async function login() { try { enter(await api('/auth/login', { method:'POST', body:{ email:$('email').value, password:$('password').value } })); } catch (e) { $('autherr').textContent = e.message; } }
+async function register() { try { enter(await api('/auth/register', { method:'POST', body:{ company:$('company').value, name:$('name').value, email:$('email').value, password:$('password').value } })); } catch (e) { $('autherr').textContent = e.message; } }
+function logout() { try { localStorage.removeItem('tk'); } catch {} location.reload(); }
+
+function connect() {
+  ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws?token=' + token);
+  ws.onmessage = ev => {
+    const e = JSON.parse(ev.data);
+    if (e.type.startsWith('conversation')) { loadList(); if (sel && e.conversation.id === sel.id) { sel = e.conversation; renderHead(); } }
+    if (e.type === 'message.new' || e.type === 'message.status') { if (sel && e.message.conversation_id === sel.id) upsertMsg(e.message); if (e.type === 'message.new') loadList(); }
+  };
+  ws.onclose = () => { if (token) setTimeout(connect, 1500); };  // reconecta sozinho
+  setInterval(() => ws.readyState === 1 && ws.send('ping'), 25000);
+}
+
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { view = b.dataset.v; document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b)); loadList(); });
+
+async function loadList() {
+  convs = await api('/conversations?view=' + view);
+  $('list').innerHTML = convs.map(c => `<div class="conv ${sel && sel.id === c.id ? 'sel' : ''}" onclick="openConv('${c.id}')"><b>${esc(c.contact.name || c.contact.phone)}</b><small>${esc(c.last_preview)}</small><br><small>${c.status === 'queue' ? 'aguardando desde ' + new Date(c.waiting_since).toLocaleTimeString() : c.assigned_to === me.id ? 'com você' : 'em atendimento'}</small></div>`).join('') || '<p style="padding:14px;color:var(--mute)">Nenhuma conversa.</p>';
+}
+const esc = s => (s || '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+
+async function openConv(id) {
+  sel = convs.find(c => c.id === id); $('empty').classList.add('hide'); $('chat').classList.remove('hide');
+  renderHead(); $('msgs').innerHTML = '';
+  (await api(`/conversations/${id}/messages`)).forEach(upsertMsg); loadList();
+}
+function renderHead() {
+  $('ctitle').textContent = (sel.contact.name || '') + ' · ' + sel.contact.phone;
+  $('claimBtn').classList.toggle('hide', sel.assigned_to !== null || sel.status === 'closed');
+}
+function upsertMsg(m) {
+  let el = document.getElementById('m' + m.id);
+  if (!el) { el = document.createElement('div'); el.id = 'm' + m.id; $('msgs').appendChild(el); }
+  el.className = 'm ' + (m.direction === 'out' ? 'out' : '') + (m.status === 'failed' ? ' failed' : '');
+  el.innerHTML = esc(m.body) + (m.direction === 'out' ? `<div class="meta">${STATUS[m.status] || m.status}${m.status === 'failed' ? ` — ${esc(m.error || '')} <button onclick="resend('${m.id}')">Reenviar</button>` : ''}${m.attempts > 1 && m.status !== 'failed' ? ` (tentativa ${m.attempts})` : ''}</div>` : '');
+  $('msgs').scrollTop = 1e9;
+}
+async function claim() { try { sel = await api(`/conversations/${sel.id}/claim`, { method:'POST' }); renderHead(); loadList(); } catch (e) { toast(e.message); loadList(); } }
+async function closeConv() { try { await api(`/conversations/${sel.id}/close`, { method:'POST' }); loadList(); } catch (e) { toast(e.message); } }
+async function send() {
+  const t = $('text').value.trim(); if (!t) return; $('text').value = '';
+  try { upsertMsg(await api(`/conversations/${sel.id}/messages`, { method:'POST', body:{ body:t, client_id: crypto.randomUUID() } })); } catch (e) { toast(e.message); $('text').value = t; }
+}
+async function resend(id) { try { upsertMsg(await api(`/messages/${id}/resend`, { method:'POST' })); } catch (e) { toast(e.message); } }
+async function simulate() {
+  const phone = prompt('Telefone do cliente simulado', '5511999990000'); if (!phone) return;
+  const text = prompt('Mensagem do cliente', 'Olá, gostaria de informações'); if (!text) return;
+  try { await api('/dev/inbound', { method:'POST', body:{ phone, name:'Cliente ' + phone.slice(-4), text } }); } catch (e) { toast(e.message); }
+}
+try { const t = localStorage.getItem('tk'); if (t) { token = t; api('/me').then(u => enter({ token: t, user: u })).catch(() => { token = null; }); } } catch {}
+</script>
+</body>
+</html>
