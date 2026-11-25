@@ -202,6 +202,11 @@ details p{color:var(--mute);margin-top:14px;max-width:58ch}
 footer{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;padding-block:36px 56px;border-top:1px solid var(--line);color:var(--mute);font-size:14.5px}
 footer .brand{color:var(--ink);font-size:16px}
 
+/* aviso (só aparece no site público, onde os botões apontam para #aviso) */
+.aviso{display:none;position:fixed;inset:0;z-index:100;background:rgba(9,17,27,.62);place-items:center;padding:20px}
+.aviso:target{display:grid}
+.aviso .box{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:22px;max-width:460px;padding:32px;display:grid;gap:14px;box-shadow:var(--shadow-lg)}
+.aviso h3{font-size:24px}.aviso p{color:var(--mute)}.aviso .btn{justify-self:start}
 /* responsivo */
 @media (max-width:1020px){
   .hero{grid-template-columns:1fr;gap:56px;padding-bottom:72px}
@@ -230,6 +235,14 @@ footer .brand{color:var(--ink);font-size:16px}
     <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4zM22 2 11 13"/></symbol>
   </defs>
 </svg>
+
+<div class="aviso" id="aviso" role="dialog" aria-labelledby="aviso-t">
+  <div class="box">
+    <h3 id="aviso-t">O cadastro ainda não está aberto</h3>
+    <p>Esta é a versão de teste do produto. A compra de plano e o sistema de atendimento ainda estão em validação e rodam apenas com a equipe. Em breve abriremos para novas empresas.</p>
+    <a class="btn primary" href="#">Entendi</a>
+  </div>
+</div>
 
 <div class="wrap">
   <div class="top"><nav class="wrap" aria-label="Principal">
