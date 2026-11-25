@@ -9,9 +9,9 @@ winget install --id Python.Python.3.12 -e --source winget
 Feche e abra o PowerShell depois de instalar.
 
 ## 2. Baixar o projeto
-O repositório pertence à organização **plataforma-atendimento-ia** no GitHub (https://github.com/plataforma-atendimento-ia/plataforma-atendimento). Aceite o convite da organização que chega no seu e-mail. Depois:
+O repositório pertence à organização **plataforma-atendimento-ia** no GitHub (https://github.com/plataforma-atendimento-ia/plataforma-atendimento.io). Aceite o convite da organização que chega no seu e-mail. Depois:
 ```powershell
-git clone https://github.com/plataforma-atendimento-ia/plataforma-atendimento.git
+git clone https://github.com/plataforma-atendimento-ia/plataforma-atendimento.io.git
 cd plataforma-atendimento
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt pytest pytest-asyncio
