@@ -22,6 +22,10 @@ Formato: data · decisão · motivo.
 | 2026-11-24 | Cobrança "atendimento" = conversa resolvida pela IA OU atendida por humano, regra configurável | Alinhado ao pedido; auditável por atendimento |
 | 2026-11-24 | Funil kanban simples (sem automações complexas) no MVP | Pilar obrigatório, mas sem construtor visual |
 | 2026-11-24 | Sem cliente piloto ainda: Fase 5 depende de recrutar 3–5 betas | Registrar como risco de negócio |
+| 2026-11-25 | Número real do dono conecta pela **API oficial da Meta** (formulário no sistema, credenciais conferidas na Meta antes de salvar). QR Code/API não oficial descartado | Dono escolheu a opção oficial; evita banimento do número |
+| 2026-11-25 | Provedor de envio escolhido **por canal** (teste = simulado, real = Meta); simulador de cliente nunca escreve em número real | Evita misturar teste com produção |
+| 2026-11-25 | Qualificação de leads por **roteiro fixo sem IA** (nome, interesse, urgência, investimento → quente/morno/frio), desligável, para na hora se o cliente pedir humano ou um atendente assumir | Permite testar o fluxo sem chave de IA; vira conversa por IA na Fase 3 |
+| 2026-11-25 | `TEST_MODE` (padrão ligado) controla compra simulada, número de teste e simulador; em produção deve ser `false` | Impede plano grátis e números falsos com clientes reais |
 
 ## Pendentes (precisam do seu ok)
 1. Confirmar TypeScript (vs Python).

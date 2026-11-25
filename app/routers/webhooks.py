@@ -7,12 +7,13 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .. import automation
 from ..config import settings
 from ..db import SessionLocal
 from ..deps import current_user, get_db
 from ..models import Channel, Contact, Message, User
 from ..realtime import hub
-from ..services import STATUS_RANK, conv_out, handle_inbound, msg_out
+from ..services import STATUS_RANK, conv_payload, handle_inbound, msg_out
 
 router = APIRouter(tags=["webhooks"])
 
@@ -71,8 +72,11 @@ async def _store_inbound(s: AsyncSession, channel: Channel, phone, name, text, w
     conv, msg = res
     contact = await s.get(Contact, conv.contact_id)
     await hub.publish(channel.tenant_id, {"type": "message.new", "message": msg_out(msg)})
+    bot_msgs = await automation.on_inbound(s, conv, contact, text)  # roteiro de qualificação (se ligado)
+    for m in bot_msgs:
+        await hub.publish(channel.tenant_id, {"type": "message.new", "message": msg_out(m)})
     await hub.publish(
-        channel.tenant_id, {"type": "conversation.updated", "conversation": conv_out(conv, contact)}
+        channel.tenant_id, {"type": "conversation.updated", "conversation": await conv_payload(s, conv)}
     )
     return True
 
@@ -105,14 +109,16 @@ class SimulateIn(BaseModel):
 
 @router.post("/dev/inbound", status_code=201)
 async def simulate_inbound(body: SimulateIn, user: User = Depends(current_user), s: AsyncSession = Depends(get_db)):
-    """Simula um cliente escrevendo (somente com CHANNEL_PROVIDER=mock)."""
-    if settings.channel_provider != "mock":
+    """Simula um cliente escrevendo. Só em TEST_MODE e só em números de teste (nunca em número real)."""
+    if not settings.test_mode:
         raise HTTPException(404)
     channel = (
-        await s.execute(select(Channel).where(Channel.tenant_id == user.tenant_id).limit(1))
+        await s.execute(
+            select(Channel).where(Channel.tenant_id == user.tenant_id, Channel.is_test.is_(True)).limit(1)
+        )
     ).scalar_one_or_none()
     if channel is None:
-        raise HTTPException(409, "conecte um número de WhatsApp antes de simular clientes")
+        raise HTTPException(409, "conecte um número de teste antes de simular clientes")
     from ..models import uid
 
     created = await _store_inbound(s, channel, body.phone, body.name, body.text, body.wamid or f"sim.{uid()}")

@@ -4,11 +4,12 @@ from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..automation import lead_out
 from ..db import utcnow
 from ..deps import current_user, get_db
-from ..models import Contact, Conversation, Message, User
+from ..models import Contact, Conversation, Lead, Message, User
 from ..realtime import hub
-from ..services import claim_conversation, conv_out, msg_out, new_idempotency_key
+from ..services import claim_conversation, conv_out, conv_payload, msg_out, new_idempotency_key
 
 router = APIRouter(tags=["inbox"])
 
@@ -34,8 +35,7 @@ async def _conv(s: AsyncSession, user: User, conv_id: str) -> Conversation:
 
 
 async def _publish_conv(s: AsyncSession, c: Conversation, kind: str = "conversation.updated"):
-    contact = await s.get(Contact, c.contact_id)
-    await hub.publish(c.tenant_id, {"type": kind, "conversation": conv_out(c, contact)})
+    await hub.publish(c.tenant_id, {"type": kind, "conversation": await conv_payload(s, c)})
 
 
 @router.get("/conversations")
@@ -58,7 +58,11 @@ async def list_conversations(
     else:
         q = q.where(Conversation.status != "closed")
     rows = (await s.execute(q)).all()
-    return [conv_out(c, ct) for c, ct in rows]
+    leads = {
+        l.contact_id: lead_out(l)
+        for l in (await s.execute(select(Lead).where(Lead.tenant_id == user.tenant_id))).scalars().all()
+    }
+    return [conv_out(c, ct, leads.get(ct.id)) for c, ct in rows]
 
 
 @router.get("/conversations/{conv_id}/messages")
@@ -92,7 +96,7 @@ async def claim(conv_id: str, user: User = Depends(current_user), s: AsyncSessio
         raise HTTPException(409, "outro atendente já assumiu esta conversa")
     await s.refresh(c)
     await _publish_conv(s, c, "conversation.claimed")
-    return conv_out(c, await s.get(Contact, c.contact_id))
+    return await conv_payload(s, c)
 
 
 @router.post("/conversations/{conv_id}/transfer")
@@ -116,7 +120,7 @@ async def transfer(
     await s.commit()
     await s.refresh(c)
     await _publish_conv(s, c)
-    return conv_out(c, await s.get(Contact, c.contact_id))
+    return await conv_payload(s, c)
 
 
 @router.post("/conversations/{conv_id}/close")
@@ -128,7 +132,7 @@ async def close(conv_id: str, user: User = Depends(current_user), s: AsyncSessio
     c.version += 1
     await s.commit()
     await _publish_conv(s, c)
-    return conv_out(c, await s.get(Contact, c.contact_id))
+    return await conv_payload(s, c)
 
 
 @router.post("/conversations/{conv_id}/messages", status_code=201)

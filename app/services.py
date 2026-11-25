@@ -8,6 +8,14 @@ from .models import Channel, Contact, Conversation, InboundEvent, Message, uid
 STATUS_RANK = {"queued": 0, "sending": 1, "sent": 2, "delivered": 3, "read": 4}
 
 
+async def conv_payload(s: AsyncSession, c: Conversation) -> dict:
+    """Conversa pronta para enviar à tela, com contato e ficha do lead."""
+    from .automation import get_lead, lead_out
+
+    contact = await s.get(Contact, c.contact_id)
+    return conv_out(c, contact, lead_out(await get_lead(s, c.tenant_id, c.contact_id)))
+
+
 def msg_out(m: Message) -> dict:
     return {
         "id": m.id,
@@ -22,8 +30,9 @@ def msg_out(m: Message) -> dict:
     }
 
 
-def conv_out(c: Conversation, contact: Contact) -> dict:
+def conv_out(c: Conversation, contact: Contact, lead: dict | None = None) -> dict:
     return {
+        "lead": lead,
         "id": c.id,
         "status": c.status,
         "assigned_to": c.assigned_to,

@@ -4,7 +4,10 @@ import tempfile
 _tmp = tempfile.mkdtemp()
 os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{_tmp}/test.db"
 os.environ["RUN_WORKER"] = "false"
-os.environ["CHANNEL_PROVIDER"] = "mock"
+os.environ["TEST_MODE"] = "true"
+os.environ["WHATSAPP_VERIFY_TOKEN"] = "dev-verify"  # os testes não dependem do .env local
+os.environ["WHATSAPP_APP_SECRET"] = ""
+os.environ["JWT_SECRET"] = "chave-so-para-testes-0123456789abcdef"
 
 import httpx  # noqa: E402
 import pytest_asyncio  # noqa: E402
@@ -26,12 +29,15 @@ async def client():
         yield c
 
 
-async def register(client, company="Empresa", email="admin@a.com"):
+async def register(client, company="Empresa", email="admin@a.com", automation=False):
     r = await client.post(
         "/auth/register", json={"company": company, "name": "Admin", "email": email, "password": "senha-forte-1"}
     )
     assert r.status_code == 201, r.text
-    return {"Authorization": f"Bearer {r.json()['token']}"}
+    headers = {"Authorization": f"Bearer {r.json()['token']}"}
+    if not automation:  # os testes de mensageria não querem respostas automáticas no meio
+        await client.put("/automation", headers=headers, json={"enabled": False})
+    return headers
 
 
 async def new_agent(client, admin_headers, email):

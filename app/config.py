@@ -8,8 +8,9 @@ class Settings(BaseSettings):
     jwt_secret: str = "dev-only-secret-change-me-in-production-0000"
     jwt_expire_minutes: int = 720
 
-    # "mock" (simulado) ou "whatsapp" (Cloud API oficial da Meta)
-    channel_provider: str = "mock"
+    # Modo de teste: libera compra de plano simulada, número de teste e cliente simulado.
+    # Em produção com clientes reais, definir TEST_MODE=false.
+    test_mode: bool = True
 
     # Outbox / worker
     run_worker: bool = True

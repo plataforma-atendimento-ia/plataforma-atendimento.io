@@ -4,6 +4,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..channels import cloud
+from ..channels.base import ChannelError
 from ..config import settings
 from ..deps import admin_only, current_user, get_db
 from ..models import Channel, Tenant, User
@@ -115,8 +117,18 @@ class TestConnectIn(BaseModel):
     phone: str = Field(min_length=8, max_length=30)
 
 
+class MetaConnectIn(BaseModel):
+    phone: str = Field(min_length=8, max_length=30)
+    phone_number_id: str = Field(pattern=r"^\d{5,30}$")
+    access_token: str = Field(min_length=20, max_length=1000)
+
+
+class AutomationIn(BaseModel):
+    enabled: bool
+
+
 def _require_mock():
-    if settings.channel_provider != "mock":
+    if not settings.test_mode:
         raise HTTPException(404, "disponível apenas em modo de teste")
 
 
@@ -134,9 +146,54 @@ async def onboarding(user: User = Depends(current_user), s: AsyncSession = Depen
         "plan_name": plan["name"] if plan else None,
         "number_limit": plan["numbers"] if plan else 1,
         "channels": [_channel_out(c) for c in chans],
-        "test_mode": settings.channel_provider == "mock",
+        "test_mode": settings.test_mode,
+        "automation_on": bool(tenant.automation_on),
+        "is_admin": user.role == "admin",
+        # dados para configurar o webhook na Meta (só para administradores)
+        "webhook_path": "/webhooks/whatsapp",
+        "verify_token": settings.whatsapp_verify_token if user.role == "admin" else None,
         "plans": {k: v["name"] for k, v in PLANS.items()},
     }
+
+
+@router.put("/automation")
+async def set_automation(body: AutomationIn, admin: User = Depends(admin_only), s: AsyncSession = Depends(get_db)):
+    tenant = await s.get(Tenant, admin.tenant_id)
+    tenant.automation_on = body.enabled
+    await s.commit()
+    return {"automation_on": tenant.automation_on}
+
+
+@router.post("/channels/connect-meta", status_code=201)
+async def connect_meta(body: MetaConnectIn, admin: User = Depends(admin_only), s: AsyncSession = Depends(get_db)):
+    """Conecta um número REAL pela API oficial da Meta. As credenciais são conferidas antes de salvar."""
+    digits = "".join(ch for ch in body.phone if ch.isdigit())
+    if not 8 <= len(digits) <= 15:
+        raise HTTPException(422, "informe o telefone com 8 a 15 dígitos")
+    tenant = await s.get(Tenant, admin.tenant_id)
+    limit = PLANS.get(tenant.plan or "", {"numbers": 1})["numbers"]
+    existing = (await s.execute(select(Channel).where(Channel.tenant_id == admin.tenant_id))).scalars().all()
+    if len(existing) >= limit:
+        raise HTTPException(409, f"o plano permite {limit} número(s) de WhatsApp")
+    try:
+        info = await cloud.check_credentials(body.phone_number_id, body.access_token)
+    except ChannelError as e:
+        raise HTTPException(422, str(e))
+    shown = "".join(ch for ch in str(info.get("display_phone_number", "")) if ch.isdigit()) or digits
+    ch = Channel(
+        tenant_id=admin.tenant_id,
+        phone_number_id=body.phone_number_id,
+        access_token=body.access_token,
+        display_phone="+" + shown,
+        is_test=False,
+    )
+    s.add(ch)
+    try:
+        await s.commit()
+    except IntegrityError:
+        await s.rollback()
+        raise HTTPException(409, "este Phone number ID já está conectado")
+    return {**_channel_out(ch), "verified_name": info.get("verified_name")}
 
 
 @router.post("/billing/test-checkout")

@@ -6,7 +6,6 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .channels import provider
 from .config import settings
 from .db import init_models
 from .outbox import run_worker
@@ -18,7 +17,7 @@ from .security import decode_token
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_models()
-    task = asyncio.create_task(run_worker(provider)) if settings.run_worker else None
+    task = asyncio.create_task(run_worker()) if settings.run_worker else None
     yield
     if task:
         task.cancel()
@@ -32,7 +31,7 @@ app.include_router(webhooks.router)
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "provider": settings.channel_provider}
+    return {"status": "ok", "test_mode": settings.test_mode}
 
 
 @app.websocket("/ws")

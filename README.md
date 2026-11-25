@@ -20,6 +20,11 @@ No sistema (/app/), clique em **Criar conta da empresa**, depois em **Simular cl
 - Tempo real por WebSocket (nova mensagem, status, conversa assumida).
 - 14 testes automatizados (isolamento A×B, assumir atômico, outbox, retry, idempotência, webhook).
 
+## Número real e qualificação de leads (novo)
+- **Conectar o seu WhatsApp:** compre um plano no site, vá em *Meu número real (Meta)* e informe número, Phone number ID e token. O guia completo, com o túnel para testar em casa, está em [docs/NUMERO_REAL.md](docs/NUMERO_REAL.md). **Não foi testado contra a Meta de verdade ainda**: os testes automáticos simulam as respostas da Meta.
+- **Automação:** roteiro sem IA que pergunta nome, interesse, urgência e investimento e classifica o lead (quente, morno, frio). Botão *Automação* no topo liga e desliga.
+- Em produção, defina `TEST_MODE=false` no `.env`.
+
 ## O que ainda NÃO existe (e por quê)
 - Notas internas e tags, setores/filas/distribuição, funil kanban (Fase 2b).
 - IA, RAG, handoff, CRM automático (Fase 3). Cobrança/Stripe (Fase 4).

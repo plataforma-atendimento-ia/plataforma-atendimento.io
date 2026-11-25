@@ -17,6 +17,7 @@ class Tenant(Base):
     name: Mapped[str] = mapped_column(String(200))
     # starter | pro | business. Hoje só "compra de teste" (sem cobrança); Stripe entra na Fase 4.
     plan: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    automation_on: Mapped[bool] = mapped_column(default=True)  # roteiro automático de qualificação
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
@@ -53,6 +54,25 @@ class Contact(Base):
     phone: Mapped[str] = mapped_column(String(32))
     name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class Lead(Base):
+    """Ficha de qualificação do contato, preenchida pelo roteiro automático (e editável pelo atendente depois)."""
+
+    __tablename__ = "leads"
+    __table_args__ = (UniqueConstraint("tenant_id", "contact_id"),)
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
+    tenant_id: Mapped[str] = mapped_column(ForeignKey("tenants.id"), index=True)
+    contact_id: Mapped[str] = mapped_column(ForeignKey("contacts.id"), index=True)
+    qual_step: Mapped[str | None] = mapped_column(String(12), nullable=True)  # name|interest|urgency|budget|done
+    name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    interest: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    urgency: Mapped[str | None] = mapped_column(String(12), nullable=True)  # hoje|semana|sem_pressa
+    budget: Mapped[str | None] = mapped_column(String(12), nullable=True)  # ate_500|500_2000|acima_2000
+    score: Mapped[str | None] = mapped_column(String(8), nullable=True)  # quente|morno|frio
+    stage: Mapped[str] = mapped_column(String(24), default="novo")  # novo|qualificando|qualificado|atendimento
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
 
 class Conversation(Base):

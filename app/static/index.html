@@ -27,6 +27,13 @@
   .m.out.failed { background:var(--bad); border-color:var(--bad) }
   .meta { font-size:12px; opacity:.85; margin-top:4px } .meta button { padding:2px 8px; font-size:12px; margin-left:6px }
   #bar { display:flex; gap:8px; padding:12px; border-top:1px solid var(--line); background:var(--card) }
+  #leadbar { display:flex; gap:8px 14px; flex-wrap:wrap; align-items:center; padding:9px 16px; border-bottom:1px solid var(--line); background:var(--soft); font-size:13px }
+  .score { display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px; text-transform:uppercase; letter-spacing:.04em }
+  .score.quente { background:#fde2de; color:#b3372b } .score.morno { background:var(--warn); color:#9a5a05 } .score.frio { background:#dfe9f7; color:#2b59c3 }
+  .auto { font-size:11px; opacity:.85; margin-left:6px }
+  .secret { display:flex; gap:6px; align-items:center; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:6px 10px; font-size:13px; word-break:break-all }
+  .secret code { flex:1 } .secret button { padding:2px 8px; font-size:12px }
+  .alert { background:var(--warn); border-radius:8px; padding:10px 12px; font-size:13.5px }
   #asCustomer { display:flex; gap:8px; padding:8px 12px; border-top:1px dashed var(--line); background:var(--warn); align-items:center; font-size:13px }
   #asCustomer input { padding:5px 8px } #asCustomer span { white-space:nowrap }
   #empty { margin:auto; color:var(--mute); padding:20px; text-align:center } .hide { display:none !important }
@@ -62,6 +69,7 @@
   <header>
     <strong id="who"></strong>
     <span>
+      <button onclick="toggleAuto()" id="btnAuto" class="hide" title="Roteiro automático que qualifica os leads novos">Automação</button>
       <button onclick="openWiz(2)" id="btnWa" title="Conectar ou ver os números de WhatsApp">WhatsApp</button>
       <button onclick="simulate()" title="Simula um cliente escrevendo (modo teste)">Simular cliente</button>
       <button onclick="logout()">Sair</button>
@@ -80,6 +88,7 @@
         <strong id="ctitle"></strong>
         <span><button id="claimBtn" class="primary" onclick="claim()">Assumir</button> <button onclick="closeConv()">Encerrar</button></span>
       </div>
+      <div id="leadbar" class="hide"></div>
       <div id="msgs"></div>
       <div id="asCustomer"><span>Teste: responder como o cliente</span><input id="custText" placeholder="Mensagem do cliente..." onkeydown="if(event.key==='Enter')custSend()"><button onclick="custSend()">Enviar como cliente</button></div>
       <div id="bar"><input id="text" placeholder="Digite a resposta..." onkeydown="if(event.key==='Enter')send()"><button class="primary" onclick="send()">Enviar</button></div>
@@ -120,7 +129,12 @@ async function enter(data, justRegistered) {
   await loadOnboarding(); await loadList(); connect();
   if (!ob.plan || ob.channels.length === 0) openWiz(!ob.plan ? 1 : 2);
 }
-async function loadOnboarding() { ob = await api('/onboarding'); $('btnWa').textContent = ob.channels.length ? 'WhatsApp ✓ ' + ob.channels.length : 'Conectar WhatsApp'; }
+async function loadOnboarding() {
+  ob = await api('/onboarding'); if (!ob.test_mode) wizTab = 'real';
+  $('btnWa').textContent = ob.channels.length ? 'WhatsApp ✓ ' + ob.channels.length : 'Conectar WhatsApp';
+  $('btnAuto').classList.toggle('hide', !ob.is_admin); $('btnAuto').textContent = 'Automação: ' + (ob.automation_on ? 'ligada' : 'desligada');
+}
+async function toggleAuto() { try { await api('/automation', { method:'PUT', body:{ enabled: !ob.automation_on } }); await loadOnboarding(); toast(ob.automation_on ? 'Automação ligada: clientes novos recebem as perguntas de qualificação' : 'Automação desligada'); } catch (e) { toast(e.message); } }
 async function login() { try { enter(await api('/auth/login', { method:'POST', body:{ email:$('email').value, password:$('password').value } }), false); } catch (e) { $('autherr').textContent = e.message; } }
 async function register() { try { enter(await api('/auth/register', { method:'POST', body:{ company:$('company').value, name:$('name').value, email:$('email').value, password:$('password').value } }), true); } catch (e) { $('autherr').textContent = e.message; } }
 function logout() { try { localStorage.removeItem('tk'); } catch {} location.href = '/app/'; }
@@ -141,7 +155,7 @@ function renderWiz() {
     const used = ob.channels.length, limit = ob.number_limit;
     c.innerHTML = dots() + `<h2>Conecte o seu WhatsApp</h2>
       <p>Plano <b>${esc(ob.plan_name || '')}</b>: ${used} de ${limit} número(s) conectado(s).</p>
-      <div class="seg"><button data-t="test" class="${wizTab === 'test' ? 'on' : ''}">Testar agora (qualquer número)</button><button data-t="real" class="${wizTab === 'real' ? 'on' : ''}">Número real (Meta)</button></div>
+      <div class="seg">${ob.test_mode ? `<button data-t="test" class="${wizTab === 'test' ? 'on' : ''}">Testar agora (qualquer número)</button>` : ''}<button data-t="real" class="${wizTab === 'real' ? 'on' : ''}">Meu número real (Meta)</button></div>
       <div id="tabBody"></div>
       <div class="row">${used ? '<button class="primary" id="wizNext">Continuar</button>' : ''}</div>`;
     c.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { wizTab = b.dataset.t; renderWiz(); });
@@ -149,24 +163,40 @@ function renderWiz() {
       <div class="ok">Modo de teste: digite <b>qualquer número</b>. Ele é conectado de mentira (nada é enviado ao WhatsApp de verdade), só para você experimentar o atendimento.</div>
       ${ob.channels.map(ch => `<div class="ok">✓ Conectado: <b>${esc(ch.display_phone)}</b></div>`).join('')}
       ${used < limit ? '<input id="phone" placeholder="Ex.: 27 99999-1234" inputmode="tel"><button class="primary" id="connBtn">Conectar este número</button>' : '<p>Você já usou todos os números do plano.</p>'}` : `
-      <p>Para usar um número de verdade, a Meta exige a API oficial do WhatsApp (não existe QR Code nela). Passo a passo:</p>
+      <p>Os números reais usam a <b>API oficial da Meta</b> (não existe QR Code nela). Faça os passos 1 a 3 na Meta, depois preencha o formulário no fim.</p>
       <ol class="guide">
-        <li>Crie uma conta em <b>developers.facebook.com</b> e um app do tipo <b>Business</b>.</li>
-        <li>Adicione o produto <b>WhatsApp</b> ao app e anote o <b>Phone number ID</b> e o <b>token de acesso</b>.</li>
-        <li>Verifique a sua empresa no Meta Business e cadastre uma forma de pagamento (a Meta cobra por mensagem).</li>
-        <li>O número precisa estar liberado para a API. Confira as regras atuais da Meta se ele já é usado no aplicativo comum.</li>
-        <li>Em <b>Configuração do webhook</b>, informe <code>https://SEU-DOMINIO/webhooks/whatsapp</code> e o token de verificação definido em <code>WHATSAPP_VERIFY_TOKEN</code>. Assine o campo <code>messages</code>.</li>
-        <li>No servidor, defina <code>CHANNEL_PROVIDER=whatsapp</code> e cadastre o canal com <code>POST /channels</code> (Phone number ID e token).</li>
+        <li>Crie uma conta em <b>developers.facebook.com</b> e um app do tipo <b>Business</b>. Adicione o produto <b>WhatsApp</b>.</li>
+        <li>Em <b>WhatsApp &gt; Configuração da API</b>, anote o <b>Phone number ID</b> e gere um <b>token de acesso</b> (para uso contínuo, crie um token de usuário do sistema).</li>
+        <li>Em <b>WhatsApp &gt; Configuração</b> (webhook), cole o endereço e o token de verificação abaixo e assine o campo <code>messages</code>.</li>
+        <li>O número precisa estar liberado para a API. Se ele é usado no aplicativo comum do celular, confira as regras da Meta antes (o aplicativo pode deixar de receber mensagens).</li>
+        <li>A Meta cobra por mensagem e exige uma forma de pagamento para uso real. Para testar, a Meta oferece um número de teste gratuito.</li>
       </ol>
-      <p>Isso exige o sistema hospedado com endereço público, o que ainda não temos. Por enquanto use a aba de teste.</p>`;
+      ${ob.is_admin ? `
+      <div class="alert ${/^(localhost|127\.|\[::1\])/.test(location.hostname) ? '' : 'hide'}">Atenção: este endereço (<b>${esc(location.host)}</b>) só funciona no seu computador. A Meta precisa de um endereço público para entregar as mensagens. Use um túnel (ex.: Cloudflare Tunnel) ou hospede o sistema, e abra o site por esse endereço.</div>
+      <div><small>Endereço do webhook</small><div class="secret"><code>${esc(location.origin + ob.webhook_path)}</code><button data-copy="${esc(location.origin + ob.webhook_path)}">Copiar</button></div></div>
+      <div><small>Token de verificação</small><div class="secret"><code>${esc(ob.verify_token)}</code><button data-copy="${esc(ob.verify_token)}">Copiar</button></div></div>
+      ${ob.verify_token === 'dev-verify' ? '<div class="alert">Este é o token padrão de desenvolvimento, público no código. Defina <code>WHATSAPP_VERIFY_TOKEN</code> no arquivo .env do servidor antes de usar um número real.</div>' : ''}
+      ${used < limit ? `<input id="mPhone" placeholder="Seu número de WhatsApp (ex.: 27 99999-1234)" inputmode="tel">
+      <input id="mPnid" placeholder="Phone number ID (só números)" inputmode="numeric" autocomplete="off">
+      <input id="mToken" type="password" placeholder="Token de acesso da Meta" autocomplete="off">
+      <button class="primary" id="metaBtn">Conectar e verificar com a Meta</button>
+      <small>O token é guardado no servidor e nunca volta para o navegador. Todas as mensagens recebidas neste número passam a aparecer na caixa de entrada daqui para frente (mensagens antigas não são importadas).</small>` : '<p>Você já usou todos os números do plano.</p>'}` : '<p>Somente o administrador pode conectar um número.</p>'}`;
+    c.querySelectorAll('[data-copy]').forEach(b => b.onclick = async () => { try { await navigator.clipboard.writeText(b.dataset.copy); toast('Copiado'); } catch { toast('Selecione e copie manualmente'); } });
+    if ($('metaBtn')) $('metaBtn').onclick = async () => {
+      $('metaBtn').disabled = true; $('metaBtn').textContent = 'Verificando com a Meta…';
+      try { const r = await api('/channels/connect-meta', { method:'POST', body:{ phone:$('mPhone').value, phone_number_id:$('mPnid').value.trim(), access_token:$('mToken').value.trim() } }); await loadOnboarding(); toast('Conectado: ' + r.display_phone + (r.verified_name ? ' (' + r.verified_name + ')' : '')); wizStep = 3; renderWiz(); }
+      catch (e) { toast(e.message); if ($('metaBtn')) { $('metaBtn').disabled = false; $('metaBtn').textContent = 'Conectar e verificar com a Meta'; } }
+    };
     if ($('connBtn')) { $('connBtn').onclick = async () => { try { await api('/channels/test-connect', { method:'POST', body:{ phone:$('phone').value } }); await loadOnboarding(); toast('Número conectado (teste)'); wizStep = 3; renderWiz(); } catch (e) { toast(e.message); } }; $('phone').onkeydown = e => { if (e.key === 'Enter') $('connBtn').click(); }; }
     if ($('wizNext')) $('wizNext').onclick = () => { wizStep = 3; renderWiz(); };
   } else {
     c.innerHTML = dots() + `<h2>WhatsApp conectado</h2>
       ${ob.channels.map(ch => `<div class="ok">✓ <b>${esc(ch.display_phone)}</b> ${ch.is_test ? '(teste)' : ''}</div>`).join('')}
-      <p>Agora você já pode atender. Crie clientes de exemplo na fila, entre no atendimento e use <b>Assumir</b> em uma conversa. Dentro da conversa há um campo para responder como se fosse o cliente.</p>
-      <div class="row"><button id="mkDemo">Criar 3 clientes de exemplo</button><button class="primary" id="goApp">Ir para o atendimento</button></div>`;
-    $('mkDemo').onclick = async () => {
+      ${ob.channels.some(ch => !ch.is_test)
+        ? '<p>Seu número real está conectado. <b>Toda mensagem que chegar nele</b> aparece na fila daqui para frente. Clientes novos recebem as perguntas de qualificação (nome, interesse, urgência e investimento) e viram um lead quente, morno ou frio. Use <b>Assumir</b> para atender. Para testar, peça a alguém (ou use outro celular) para mandar uma mensagem para o seu número.</p>'
+        : '<p>Agora você já pode atender. Com a <b>automação ligada</b>, cada cliente novo recebe as perguntas de qualificação e vira um lead quente, morno ou frio. Crie clientes de exemplo, entre no atendimento e use <b>Assumir</b>. Dentro da conversa há um campo para responder como se fosse o cliente.</p>'}
+      <div class="row">${ob.test_mode && ob.channels.some(ch => ch.is_test) ? '<button id="mkDemo">Criar 3 clientes de exemplo</button>' : ''}<button class="primary" id="goApp">Ir para o atendimento</button></div>`;
+    if ($('mkDemo')) $('mkDemo').onclick = async () => {
       const demo = [['5511987650001', 'Marina', 'Oi! Vocês entregam amanhã?'], ['5511987650002', 'Carlos', 'Quero saber o valor do plano Pro.'], ['5511987650003', 'Fernanda', 'Preciso falar com alguém sobre meu pedido.']];
       try { for (const [phone, name, text] of demo) await api('/dev/inbound', { method:'POST', body:{ phone, name, text } }); toast('3 clientes chegaram na fila'); } catch (e) { toast(e.message); }
     };
@@ -189,22 +219,31 @@ document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { view 
 
 async function loadList() {
   convs = await api('/conversations?view=' + view);
-  $('list').innerHTML = convs.map(c => `<div class="conv ${sel && sel.id === c.id ? 'sel' : ''}" onclick="openConv('${c.id}')"><b>${esc(c.contact.name || c.contact.phone)}</b><small>${esc(c.last_preview)}</small><br><small>${c.status === 'queue' ? 'aguardando desde ' + new Date(c.waiting_since).toLocaleTimeString() : c.assigned_to === me.id ? 'com você' : 'em atendimento'}</small></div>`).join('') || '<p style="padding:14px;color:var(--mute)">Nenhuma conversa nesta aba.</p>';
+  $('list').innerHTML = convs.map(c => `<div class="conv ${sel && sel.id === c.id ? 'sel' : ''}" onclick="openConv('${c.id}')"><b>${esc(c.contact.name || c.contact.phone)} ${scoreTag(c.lead)}</b><small>${esc(c.last_preview)}</small><br><small>${c.status === 'queue' ? 'aguardando desde ' + new Date(c.waiting_since).toLocaleTimeString() : c.assigned_to === me.id ? 'com você' : 'em atendimento'}</small></div>`).join('') || '<p style="padding:14px;color:var(--mute)">Nenhuma conversa nesta aba.</p>';
 }
 async function openConv(id) {
   sel = convs.find(c => c.id === id); $('empty').classList.add('hide'); $('chat').classList.remove('hide');
   renderHead(); $('msgs').innerHTML = '';
   (await api(`/conversations/${id}/messages`)).forEach(upsertMsg); loadList();
 }
+const URG = { hoje:'hoje', semana:'esta semana', sem_pressa:'sem pressa' }, BUD = { ate_500:'até R$ 500', '500_2000':'R$ 500 a R$ 2.000', acima_2000:'acima de R$ 2.000' };
+function scoreTag(l) { return l && l.score ? `<span class="score ${l.score}">${l.score}</span>` : (l && l.step && l.step !== 'done' ? '<span class="score frio">qualificando</span>' : ''); }
 function renderHead() {
   $('ctitle').textContent = (sel.contact.name || '') + ' · ' + sel.contact.phone;
   $('claimBtn').classList.toggle('hide', sel.assigned_to !== null || sel.status === 'closed');
+  const l = sel.lead, bar = $('leadbar');
+  if (!l) { bar.classList.add('hide'); return; }
+  bar.classList.remove('hide');
+  bar.innerHTML = `<b>Ficha do lead</b> ${scoreTag(l)}` +
+    (l.name ? `<span>Nome: <b>${esc(l.name)}</b></span>` : '') + (l.interest ? `<span>Interesse: <b>${esc(l.interest)}</b></span>` : '') +
+    (l.urgency ? `<span>Urgência: <b>${URG[l.urgency]}</b></span>` : '') + (l.budget ? `<span>Investimento: <b>${BUD[l.budget]}</b></span>` : '') +
+    `<span>Etapa: <b>${esc(l.stage)}</b></span>`;
 }
 function upsertMsg(m) {
   let el = document.getElementById('m' + m.id);
   if (!el) { el = document.createElement('div'); el.id = 'm' + m.id; $('msgs').appendChild(el); }
   el.className = 'm ' + (m.direction === 'out' ? 'out' : '') + (m.status === 'failed' ? ' failed' : '');
-  el.innerHTML = esc(m.body) + (m.direction === 'out' ? `<div class="meta">${STATUS[m.status] || m.status}${m.status === 'failed' ? ` — ${esc(m.error || '')} <button onclick="resend('${m.id}')">Reenviar</button>` : ''}${m.attempts > 1 && m.status !== 'failed' ? ` (tentativa ${m.attempts})` : ''}</div>` : '');
+  el.innerHTML = esc(m.body) + (m.direction === 'out' ? `<div class="meta">${m.sender_user_id ? '' : '🤖 automático · '}${STATUS[m.status] || m.status}${m.status === 'failed' ? ` — ${esc(m.error || '')} <button onclick="resend('${m.id}')">Reenviar</button>` : ''}${m.attempts > 1 && m.status !== 'failed' ? ` (tentativa ${m.attempts})` : ''}</div>` : '');
   $('msgs').scrollTop = 1e9;
 }
 async function claim() { try { sel = await api(`/conversations/${sel.id}/claim`, { method:'POST' }); renderHead(); loadList(); } catch (e) { toast(e.message); loadList(); } }
