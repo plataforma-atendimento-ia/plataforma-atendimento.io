@@ -9,9 +9,9 @@ winget install --id Python.Python.3.12 -e --source winget
 Feche e abra o PowerShell depois de instalar.
 
 ## 2. Baixar o projeto
-Peça ao dono do repositório para convidar seu usuário do GitHub (Settings → Collaborators). Depois:
+Crie sua conta gratuita em github.com e passe seu usuário ao dono (IohanCarpen), que vai convidar você. Aceite o convite que chega no seu e-mail. Depois:
 ```powershell
-git clone https://github.com/SEU-GRUPO/plataforma-atendimento.git
+git clone https://github.com/IohanCarpen/plataforma-atendimento.git
 cd plataforma-atendimento
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt pytest pytest-asyncio
