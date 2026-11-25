@@ -1,4 +1,5 @@
 name: Publicar site de vendas
+run-name: Publicar site (Pages ativo)
 
 # Publica app/static/site/index.html no GitHub Pages a cada mudança nele.
 # Os botões "/app/" do site apontam para o sistema de atendimento. No Pages o sistema não existe,
