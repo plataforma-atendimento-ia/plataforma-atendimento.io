@@ -41,6 +41,8 @@ class Channel(Base):
     phone_number_id: Mapped[str] = mapped_column(String(64), unique=True)
     display_phone: Mapped[str | None] = mapped_column(String(32), nullable=True)  # número mostrado ao usuário
     is_test: Mapped[bool] = mapped_column(default=False)  # canal simulado (sem Meta)
+    via: Mapped[str | None] = mapped_column(String(10), nullable=True)  # "qr" = ponte não oficial; vazio = Meta/teste
+    link_status: Mapped[str | None] = mapped_column(String(14), nullable=True)  # pending|connected|disconnected (QR)
     # TODO(fase 4): criptografar em repouso
     access_token: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
@@ -52,6 +54,7 @@ class Contact(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
     tenant_id: Mapped[str] = mapped_column(ForeignKey("tenants.id"), index=True)
     phone: Mapped[str] = mapped_column(String(32))
+    wa_jid: Mapped[str | None] = mapped_column(String(64), nullable=True)  # endereço exato para responder (ponte QR)
     name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 

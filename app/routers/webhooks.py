@@ -65,8 +65,8 @@ async def _process_change(value: dict) -> None:
             await _apply_status(s, channel.tenant_id, st)
 
 
-async def _store_inbound(s: AsyncSession, channel: Channel, phone, name, text, wamid) -> bool:
-    res = await handle_inbound(s, channel, phone, name, text, wamid)
+async def _store_inbound(s: AsyncSession, channel: Channel, phone, name, text, wamid, wa_jid=None) -> bool:
+    res = await handle_inbound(s, channel, phone, name, text, wamid, wa_jid)
     if res is None:
         return False
     conv, msg = res

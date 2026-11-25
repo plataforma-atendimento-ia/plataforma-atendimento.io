@@ -6,9 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..channels import cloud
 from ..channels.base import ChannelError
+from ..channels.bridge import BridgeDown, bridge_up
+from ..channels.bridge import request as bridge_request
 from ..config import settings
 from ..deps import admin_only, current_user, get_db
-from ..models import Channel, Tenant, User
+from ..models import Channel, Tenant, User, uid
 from ..security import hash_password, make_token, verify_password
 
 router = APIRouter(tags=["auth"])
@@ -133,7 +135,17 @@ def _require_mock():
 
 
 def _channel_out(c: Channel) -> dict:
-    return {"id": c.id, "display_phone": c.display_phone or c.phone_number_id, "is_test": bool(c.is_test)}
+    return {
+        "id": c.id,
+        "display_phone": c.display_phone or ("aguardando leitura do QR" if c.via == "qr" else c.phone_number_id),
+        "is_test": bool(c.is_test),
+        "via": c.via,
+        "link_status": c.link_status,
+    }
+
+
+def _active(channels) -> list:
+    return [c for c in channels if c.link_status != "disconnected"]
 
 
 @router.get("/onboarding")
@@ -145,7 +157,9 @@ async def onboarding(user: User = Depends(current_user), s: AsyncSession = Depen
         "plan": tenant.plan,
         "plan_name": plan["name"] if plan else None,
         "number_limit": plan["numbers"] if plan else 1,
-        "channels": [_channel_out(c) for c in chans],
+        "channels": [_channel_out(c) for c in _active(chans)],
+        "qr_enabled": bool(settings.bridge_secret),
+        "bridge_up": await bridge_up(),
         "test_mode": settings.test_mode,
         "automation_on": bool(tenant.automation_on),
         "is_admin": user.role == "admin",
@@ -173,7 +187,7 @@ async def connect_meta(body: MetaConnectIn, admin: User = Depends(admin_only), s
     tenant = await s.get(Tenant, admin.tenant_id)
     limit = PLANS.get(tenant.plan or "", {"numbers": 1})["numbers"]
     existing = (await s.execute(select(Channel).where(Channel.tenant_id == admin.tenant_id))).scalars().all()
-    if len(existing) >= limit:
+    if len(_active(existing)) >= limit:
         raise HTTPException(409, f"o plano permite {limit} número(s) de WhatsApp")
     try:
         info = await cloud.check_credentials(body.phone_number_id, body.access_token)
@@ -218,7 +232,7 @@ async def test_connect(body: TestConnectIn, admin: User = Depends(admin_only), s
     existing = (await s.execute(select(Channel).where(Channel.tenant_id == admin.tenant_id))).scalars().all()
     if any((c.display_phone or "") == "+" + digits for c in existing):
         raise HTTPException(409, "este número já está conectado")
-    if len(existing) >= limit:
+    if len(_active(existing)) >= limit:
         raise HTTPException(409, f"o plano permite {limit} número(s) de WhatsApp")
     ch = Channel(
         tenant_id=admin.tenant_id,
@@ -227,6 +241,75 @@ async def test_connect(body: TestConnectIn, admin: User = Depends(admin_only), s
         is_test=True,
     )
     s.add(ch)
+    await s.commit()
+    return _channel_out(ch)
+
+
+def _require_bridge():
+    if not settings.bridge_secret:
+        raise HTTPException(503, "a conexão por QR Code está desligada (defina BRIDGE_SECRET no .env)")
+
+
+async def _qr_channel_of(s: AsyncSession, admin: User, channel_id: str) -> Channel:
+    ch = (
+        await s.execute(
+            select(Channel).where(Channel.id == channel_id, Channel.tenant_id == admin.tenant_id, Channel.via == "qr")
+        )
+    ).scalar_one_or_none()
+    if ch is None:
+        raise HTTPException(404, "canal não encontrado")
+    return ch
+
+
+@router.post("/channels/qr/start", status_code=201)
+async def qr_start(admin: User = Depends(admin_only), s: AsyncSession = Depends(get_db)):
+    """Conexão NÃO OFICIAL por QR Code (viola os termos do WhatsApp; risco de banimento do número)."""
+    _require_bridge()
+    tenant = await s.get(Tenant, admin.tenant_id)
+    limit = PLANS.get(tenant.plan or "", {"numbers": 1})["numbers"]
+    existing = (await s.execute(select(Channel).where(Channel.tenant_id == admin.tenant_id))).scalars().all()
+    pending = [c for c in existing if c.via == "qr" and c.link_status == "pending"]
+    if pending:  # reaproveita a tentativa em andamento (evita criar vários canais)
+        ch = pending[0]
+    else:
+        if len(_active(existing)) >= limit:
+            raise HTTPException(409, f"o plano permite {limit} número(s) de WhatsApp")
+        ch = Channel(tenant_id=admin.tenant_id, phone_number_id=f"qr-{uid()}", via="qr", link_status="pending")
+        s.add(ch)
+        await s.commit()
+    try:
+        await bridge_request("POST", f"/sessions/{ch.id}/start")
+    except BridgeDown:
+        if not pending:
+            await s.delete(ch)
+            await s.commit()
+        raise HTTPException(503, "a ponte do WhatsApp não está rodando. Abra o sistema com .\\run.ps1 (ele liga a ponte).")
+    return _channel_out(ch)
+
+
+@router.get("/channels/{channel_id}/qr")
+async def qr_status(channel_id: str, admin: User = Depends(admin_only), s: AsyncSession = Depends(get_db)):
+    ch = await _qr_channel_of(s, admin, channel_id)
+    try:
+        info = await bridge_request("GET", f"/sessions/{ch.id}", timeout=5)
+    except BridgeDown:
+        raise HTTPException(503, "a ponte do WhatsApp não está rodando")
+    if info.get("status") == "connected" and ch.link_status != "connected":
+        ch.link_status = "connected"
+        if info.get("phone"):
+            ch.display_phone = "+" + "".join(c for c in str(info["phone"]) if c.isdigit())
+        await s.commit()
+    return {"status": info.get("status"), "qr": info.get("qr"), "phone": ch.display_phone, "channel": _channel_out(ch)}
+
+
+@router.post("/channels/{channel_id}/disconnect")
+async def qr_disconnect(channel_id: str, admin: User = Depends(admin_only), s: AsyncSession = Depends(get_db)):
+    ch = await _qr_channel_of(s, admin, channel_id)
+    try:
+        await bridge_request("POST", f"/sessions/{ch.id}/stop")
+    except BridgeDown:
+        pass  # a ponte já estava parada; marcamos como desconectado mesmo assim
+    ch.link_status = "disconnected"
     await s.commit()
     return _channel_out(ch)
 

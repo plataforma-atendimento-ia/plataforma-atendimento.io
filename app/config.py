@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     outbox_backoff_seconds: list[int] = [1, 5, 30, 120, 600]
     sending_timeout_seconds: int = 120
 
+    # Ponte NÃO OFICIAL por QR Code (pasta bridge/). Sem BRIDGE_SECRET o recurso fica desligado.
+    bridge_url: str = "http://127.0.0.1:8788"
+    bridge_secret: str = ""
+
     # WhatsApp Cloud API
     whatsapp_verify_token: str = "dev-verify"
     whatsapp_api_version: str = "v21.0"

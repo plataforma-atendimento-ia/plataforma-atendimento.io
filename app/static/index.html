@@ -131,7 +131,8 @@ async function enter(data, justRegistered) {
 }
 async function loadOnboarding() {
   ob = await api('/onboarding'); if (!ob.test_mode) wizTab = 'real';
-  $('btnWa').textContent = ob.channels.length ? 'WhatsApp ✓ ' + ob.channels.length : 'Conectar WhatsApp';
+  const n = ob.channels.filter(ch => ch.link_status !== 'pending').length;
+  $('btnWa').textContent = n ? 'WhatsApp ✓ ' + n : 'Conectar WhatsApp';
   $('btnAuto').classList.toggle('hide', !ob.is_admin); $('btnAuto').textContent = 'Automação: ' + (ob.automation_on ? 'ligada' : 'desligada');
 }
 async function toggleAuto() { try { await api('/automation', { method:'PUT', body:{ enabled: !ob.automation_on } }); await loadOnboarding(); toast(ob.automation_on ? 'Automação ligada: clientes novos recebem as perguntas de qualificação' : 'Automação desligada'); } catch (e) { toast(e.message); } }
@@ -140,8 +141,42 @@ async function register() { try { enter(await api('/auth/register', { method:'PO
 function logout() { try { localStorage.removeItem('tk'); } catch {} location.href = '/app/'; }
 
 // ---- assistente: plano -> conectar WhatsApp -> pronto ----
+let qrTimer = null, qrChannelId = null;
+function stopQrPoll() { if (qrTimer) { clearInterval(qrTimer); qrTimer = null; } }
+function renderQrTab(used, limit) {
+  const body = $('tabBody');
+  const pending = ob.channels.find(ch => ch.via === 'qr' && ch.link_status === 'pending');
+  const connected = ob.channels.filter(ch => ch.via === 'qr' && ch.link_status === 'connected');
+  body.innerHTML = '<div class="alert"><b>Risco real:</b> conectar por QR Code <b>viola os termos do WhatsApp</b> e pode levar ao <b>banimento permanente do número</b>. Use um chip secundário, não o número principal da empresa. Para uso profissional, prefira a API oficial.</div>' +
+    connected.map(ch => `<div class="ok">✓ Conectado por QR: <b>${esc(ch.display_phone)}</b> <button data-disc="${ch.id}">Desconectar</button></div>`).join('') +
+    (ob.bridge_up ? '' : '<div class="alert">A ponte do WhatsApp não está rodando. Abra o sistema com <code>.\\run.ps1</code> (ele liga a ponte) e recarregue esta página.</div>') +
+    ((used < limit || pending) && ob.bridge_up ? `<div id="qrBox"><button class="primary" id="qrBtn">${pending ? 'Gerar o QR Code de novo' : 'Gerar QR Code'}</button></div>` : (used >= limit ? '<p>Você já usou todos os números do plano.</p>' : '')) +
+    '<small>No celular: WhatsApp &gt; Configurações &gt; Dispositivos conectados &gt; Conectar dispositivo, e aponte a câmera para o QR Code. Passam a aparecer aqui as mensagens individuais recebidas; grupos e status ficam de fora. O QR é renovado sozinho.</small>';
+  body.querySelectorAll('[data-disc]').forEach(b => b.onclick = async () => { try { await api(`/channels/${b.dataset.disc}/disconnect`, { method:'POST' }); await loadOnboarding(); renderWiz(); toast('Desconectado'); } catch (e) { toast(e.message); } });
+  if ($('qrBtn')) $('qrBtn').onclick = startQr;
+  if (pending && ob.bridge_up) { qrChannelId = pending.id; showQr(); }
+}
+async function startQr() {
+  try { const ch = await api('/channels/qr/start', { method:'POST' }); qrChannelId = ch.id; await loadOnboarding(); showQr(); } catch (e) { toast(e.message); }
+}
+function showQr() {
+  const box = $('qrBox'); if (!box) return;
+  box.innerHTML = '<p id="qrMsg">Iniciando a conexão com o WhatsApp…</p><img id="qrImg" alt="QR Code do WhatsApp" width="280" height="280" class="hide" style="background:#fff;border-radius:10px;padding:6px">';
+  stopQrPoll();
+  const tick = async () => {
+    if ($('wiz').style.display === 'none' || !$('qrMsg')) { stopQrPoll(); return; }
+    try {
+      const st = await api(`/channels/${qrChannelId}/qr`);
+      if (st.status === 'connected') { stopQrPoll(); await loadOnboarding(); toast('WhatsApp conectado: ' + (st.phone || '')); wizStep = 3; renderWiz(); return; }
+      if (st.qr) { $('qrImg').src = st.qr; $('qrImg').classList.remove('hide'); $('qrMsg').textContent = 'Escaneie com o celular. O código é renovado sozinho.'; }
+      else if (st.status === 'none' || st.status === 'closed') { $('qrMsg').textContent = 'A sessão terminou. Clique em "Gerar QR Code" de novo.'; stopQrPoll(); await api('/channels/qr/start', { method:'POST' }).then(() => showQr()).catch(() => {}); }
+    } catch (e) { $('qrMsg').textContent = e.message; stopQrPoll(); }
+  };
+  tick(); qrTimer = setInterval(tick, 2000);
+}
 function openWiz(step) { wizStep = step; $('wiz').style.display = 'flex'; renderWiz(); }
-function closeWiz() { $('wiz').style.display = 'none'; loadList(); }
+function closeWiz() { stopQrPoll(); $('wiz').style.display = 'none'; loadList(); }
+const linked = () => ob.channels.filter(ch => ch.link_status !== 'pending');
 function dots() { const n = ['1. Plano', '2. Conectar WhatsApp', '3. Pronto']; return '<div class="dots">' + n.map((t, i) => i + 1 === wizStep ? `<b>${t}</b>` : t).join(' › ') + '</div>'; }
 function renderWiz() {
   const c = $('wizCard');
@@ -152,14 +187,17 @@ function renderWiz() {
     c.querySelectorAll('[data-plan]').forEach(b => b.onclick = async () => { try { await api('/billing/test-checkout', { method:'POST', body:{ plan:b.dataset.plan } }); await loadOnboarding(); renderWiz(); } catch (e) { toast(e.message); } });
     $('wizNext').onclick = () => { wizStep = ob.channels.length ? 3 : 2; renderWiz(); };
   } else if (wizStep === 2) {
-    const used = ob.channels.length, limit = ob.number_limit;
+    const used = ob.channels.filter(ch => ch.link_status !== 'pending').length, limit = ob.number_limit;
     c.innerHTML = dots() + `<h2>Conecte o seu WhatsApp</h2>
       <p>Plano <b>${esc(ob.plan_name || '')}</b>: ${used} de ${limit} número(s) conectado(s).</p>
-      <div class="seg">${ob.test_mode ? `<button data-t="test" class="${wizTab === 'test' ? 'on' : ''}">Testar agora (qualquer número)</button>` : ''}<button data-t="real" class="${wizTab === 'real' ? 'on' : ''}">Meu número real (Meta)</button></div>
+      <div class="seg">${ob.test_mode ? `<button data-t="test" class="${wizTab === 'test' ? 'on' : ''}">Testar (número de mentira)</button>` : ''}${ob.qr_enabled ? `<button data-t="qr" class="${wizTab === 'qr' ? 'on' : ''}">QR Code (não oficial)</button>` : ''}<button data-t="real" class="${wizTab === 'real' ? 'on' : ''}">API oficial (Meta)</button></div>
       <div id="tabBody"></div>
       <div class="row">${used ? '<button class="primary" id="wizNext">Continuar</button>' : ''}</div>`;
     c.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { wizTab = b.dataset.t; renderWiz(); });
-    $('tabBody').innerHTML = wizTab === 'test' ? `
+    if (wizTab === 'qr' && !ob.qr_enabled) wizTab = ob.test_mode ? 'test' : 'real';
+    stopQrPoll();
+    if (wizTab === 'qr') { renderQrTab(used, limit); }
+    else $('tabBody').innerHTML = wizTab === 'test' ? `
       <div class="ok">Modo de teste: digite <b>qualquer número</b>. Ele é conectado de mentira (nada é enviado ao WhatsApp de verdade), só para você experimentar o atendimento.</div>
       ${ob.channels.map(ch => `<div class="ok">✓ Conectado: <b>${esc(ch.display_phone)}</b></div>`).join('')}
       ${used < limit ? '<input id="phone" placeholder="Ex.: 27 99999-1234" inputmode="tel"><button class="primary" id="connBtn">Conectar este número</button>' : '<p>Você já usou todos os números do plano.</p>'}` : `
@@ -191,7 +229,7 @@ function renderWiz() {
     if ($('wizNext')) $('wizNext').onclick = () => { wizStep = 3; renderWiz(); };
   } else {
     c.innerHTML = dots() + `<h2>WhatsApp conectado</h2>
-      ${ob.channels.map(ch => `<div class="ok">✓ <b>${esc(ch.display_phone)}</b> ${ch.is_test ? '(teste)' : ''}</div>`).join('')}
+      ${linked().map(ch => `<div class="ok">✓ <b>${esc(ch.display_phone)}</b> ${ch.is_test ? '(teste)' : ch.via === 'qr' ? '(QR Code)' : '(API oficial)'}</div>`).join('')}
       ${ob.channels.some(ch => !ch.is_test)
         ? '<p>Seu número real está conectado. <b>Toda mensagem que chegar nele</b> aparece na fila daqui para frente. Clientes novos recebem as perguntas de qualificação (nome, interesse, urgência e investimento) e viram um lead quente, morno ou frio. Use <b>Assumir</b> para atender. Para testar, peça a alguém (ou use outro celular) para mandar uma mensagem para o seu número.</p>'
         : '<p>Agora você já pode atender. Com a <b>automação ligada</b>, cada cliente novo recebe as perguntas de qualificação e vira um lead quente, morno ou frio. Crie clientes de exemplo, entre no atendimento e use <b>Assumir</b>. Dentro da conversa há um campo para responder como se fosse o cliente.</p>'}

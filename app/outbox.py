@@ -71,7 +71,8 @@ async def process_batch(test_provider=None, limit: int = 20) -> int:
             channel = await s.get(Channel, conv.channel_id)
             chosen = (test_provider or provider_for(channel)) if channel.is_test else provider_for(channel)
             try:
-                wamid = await chosen.send_text(channel, contact.phone, msg.body, msg.idempotency_key)
+                to = contact.wa_jid or contact.phone  # ponte QR responde ao endereço exato recebido
+                wamid = await chosen.send_text(channel, to, msg.body, msg.idempotency_key)
                 msg.status, msg.wamid, msg.error = "sent", wamid, None
                 msg.attempts += 1
             except Exception as e:  # ChannelError ou qualquer erro inesperado

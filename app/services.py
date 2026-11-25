@@ -45,7 +45,7 @@ def conv_out(c: Conversation, contact: Contact, lead: dict | None = None) -> dic
 
 
 async def handle_inbound(
-    s: AsyncSession, channel: Channel, phone: str, name: str | None, text: str, wamid: str
+    s: AsyncSession, channel: Channel, phone: str, name: str | None, text: str, wamid: str, wa_jid: str | None = None
 ) -> tuple[Conversation, Message] | None:
     """Registra mensagem recebida. Idempotente por wamid. Devolve None se for duplicada."""
     s.add(InboundEvent(tenant_id=channel.tenant_id, wamid=wamid))
@@ -61,11 +61,13 @@ async def handle_inbound(
         )
     ).scalar_one_or_none()
     if contact is None:
-        contact = Contact(tenant_id=channel.tenant_id, phone=phone, name=name)
+        contact = Contact(tenant_id=channel.tenant_id, phone=phone, name=name, wa_jid=wa_jid)
         s.add(contact)
         await s.flush()
     elif name and not contact.name:
         contact.name = name
+    if wa_jid:
+        contact.wa_jid = wa_jid
 
     conv = (
         await s.execute(

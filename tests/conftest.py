@@ -7,6 +7,7 @@ os.environ["RUN_WORKER"] = "false"
 os.environ["TEST_MODE"] = "true"
 os.environ["WHATSAPP_VERIFY_TOKEN"] = "dev-verify"  # os testes não dependem do .env local
 os.environ["WHATSAPP_APP_SECRET"] = ""
+os.environ["BRIDGE_SECRET"] = "segredo-da-ponte-so-para-testes"
 os.environ["JWT_SECRET"] = "chave-so-para-testes-0123456789abcdef"
 
 import httpx  # noqa: E402

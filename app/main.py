@@ -10,7 +10,7 @@ from .config import settings
 from .db import init_models
 from .outbox import run_worker
 from .realtime import hub
-from .routers import auth, inbox, webhooks
+from .routers import auth, bridge, inbox, webhooks
 from .security import decode_token
 
 
@@ -27,6 +27,7 @@ app = FastAPI(title="Plataforma de Atendimento", lifespan=lifespan)
 app.include_router(auth.router)
 app.include_router(inbox.router)
 app.include_router(webhooks.router)
+app.include_router(bridge.router)
 
 
 @app.get("/health")
