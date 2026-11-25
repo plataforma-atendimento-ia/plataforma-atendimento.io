@@ -44,6 +44,7 @@ async def new_agent(client, admin_headers, email):
 
 
 async def inbound(client, headers, phone="5511999990000", text="oi", wamid=None):
+    await client.post("/channels/test-connect", headers=headers, json={"phone": "5527988887777"})  # 409 se já existe
     body = {"phone": phone, "text": text, "name": "Cliente"}
     if wamid:
         body["wamid"] = wamid

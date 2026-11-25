@@ -5,47 +5,67 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Atendimento</title>
 <style>
-  :root { --bg:#f6f7f9; --card:#fff; --line:#e3e6ea; --ink:#1b1f24; --mute:#6b7480; --brand:#1f7a5c; --bad:#c0392b; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#14171a; --card:#1d2227; --line:#2e353c; --ink:#e8ebee; --mute:#97a1ac; --brand:#3fb68b; --bad:#ec6b5e; } }
+  :root { --bg:#f6f7f9; --card:#fff; --line:#e3e6ea; --ink:#1b1f24; --mute:#6b7480; --brand:#1f7a5c; --bad:#c0392b; --soft:#e4f3ec; --warn:#fbefd6; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14171a; --card:#1d2227; --line:#2e353c; --ink:#e8ebee; --mute:#97a1ac; --brand:#3fb68b; --bad:#ec6b5e; --soft:#173128; --warn:#33270f; } }
   * { box-sizing:border-box } body { margin:0; font:15px system-ui,sans-serif; background:var(--bg); color:var(--ink); }
   button { font:inherit; cursor:pointer; border:1px solid var(--line); background:var(--card); color:var(--ink); padding:7px 12px; border-radius:8px }
   button.primary { background:var(--brand); border-color:var(--brand); color:#fff }
+  button:disabled { opacity:.5; cursor:default }
   input { font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); width:100% }
-  #auth { max-width:360px; margin:10vh auto; padding:24px; background:var(--card); border:1px solid var(--line); border-radius:12px; display:grid; gap:10px }
+  #auth { max-width:380px; margin:8vh auto; padding:24px; background:var(--card); border:1px solid var(--line); border-radius:12px; display:grid; gap:10px }
+  .banner { background:var(--soft); border-radius:8px; padding:10px 12px; font-size:14px }
   #app { display:none; height:100vh; grid-template-columns:320px 1fr; grid-template-rows:auto 1fr }
-  header { grid-column:1/3; display:flex; justify-content:space-between; align-items:center; padding:10px 16px; background:var(--card); border-bottom:1px solid var(--line) }
+  header { grid-column:1/3; display:flex; justify-content:space-between; align-items:center; padding:10px 16px; background:var(--card); border-bottom:1px solid var(--line); gap:8px; flex-wrap:wrap }
   aside { border-right:1px solid var(--line); overflow:auto; background:var(--card) }
-  .tabs { display:flex; gap:6px; padding:10px } .tabs button.on { background:var(--brand); color:#fff; border-color:var(--brand) }
+  .tabs { display:flex; gap:6px; padding:10px; flex-wrap:wrap } .tabs button.on { background:var(--brand); color:#fff; border-color:var(--brand) }
   .conv { padding:10px 14px; border-top:1px solid var(--line); cursor:pointer } .conv:hover,.conv.sel { background:var(--bg) }
   .conv b { display:block } .conv small { color:var(--mute) }
   main { display:flex; flex-direction:column; min-height:0 }
   #msgs { flex:1; overflow:auto; padding:16px; display:flex; flex-direction:column; gap:8px }
-  .m { max-width:70%; padding:8px 12px; border-radius:12px; background:var(--card); border:1px solid var(--line); align-self:flex-start; white-space:pre-wrap }
+  .m { max-width:70%; padding:8px 12px; border-radius:12px; background:var(--card); border:1px solid var(--line); align-self:flex-start; white-space:pre-wrap; overflow-wrap:anywhere }
   .m.out { align-self:flex-end; background:var(--brand); color:#fff; border-color:var(--brand) }
   .m.out.failed { background:var(--bad); border-color:var(--bad) }
   .meta { font-size:12px; opacity:.85; margin-top:4px } .meta button { padding:2px 8px; font-size:12px; margin-left:6px }
   #bar { display:flex; gap:8px; padding:12px; border-top:1px solid var(--line); background:var(--card) }
-  #empty { margin:auto; color:var(--mute) } .hide { display:none !important }
-  #toast { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:8px 14px; border-radius:8px; display:none }
+  #asCustomer { display:flex; gap:8px; padding:8px 12px; border-top:1px dashed var(--line); background:var(--warn); align-items:center; font-size:13px }
+  #asCustomer input { padding:5px 8px } #asCustomer span { white-space:nowrap }
+  #empty { margin:auto; color:var(--mute); padding:20px; text-align:center } .hide { display:none !important }
+  #toast { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:8px 14px; border-radius:8px; display:none; z-index:30 }
+  /* assistente de conexão */
+  #wiz { position:fixed; inset:0; background:rgba(10,14,13,.6); display:none; align-items:center; justify-content:center; padding:16px; z-index:20 }
+  #wizCard { background:var(--card); border:1px solid var(--line); border-radius:14px; width:min(640px,100%); max-height:92vh; overflow:auto; padding:24px; display:grid; gap:14px }
+  #wizCard h2 { margin:0; font-size:22px } #wizCard p { margin:0; color:var(--mute) }
+  .dots { display:flex; gap:6px; font-size:13px; color:var(--mute); flex-wrap:wrap } .dots b { color:var(--ink) }
+  .seg { display:flex; gap:6px } .seg button.on { background:var(--brand); color:#fff; border-color:var(--brand) }
+  ol.guide { margin:0; padding-left:20px; display:grid; gap:8px } ol.guide code { background:var(--bg); padding:1px 6px; border-radius:6px; font-size:13px }
+  .ok { background:var(--soft); border-radius:8px; padding:10px 12px }
+  .plans3 { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px }
+  .plans3 button { padding:14px; text-align:left; display:grid; gap:4px } .plans3 button.on { border-color:var(--brand); background:var(--soft) }
+  .row { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end }
   @media (max-width:700px){ #app{grid-template-columns:1fr} aside{max-height:40vh} header{grid-column:1} }
 </style>
 </head>
 <body>
 <section id="auth">
   <h2 style="margin:0">Plataforma de Atendimento</h2>
+  <div class="banner hide" id="planBanner"></div>
   <input id="company" placeholder="Nome da empresa (só para criar conta)">
   <input id="name" placeholder="Seu nome (só para criar conta)">
   <input id="email" type="email" placeholder="E-mail">
   <input id="password" type="password" placeholder="Senha (mín. 8 caracteres)">
   <button class="primary" onclick="login()">Entrar</button>
-  <button onclick="register()">Criar conta da empresa</button>
+  <button onclick="register()" id="regBtn">Criar conta da empresa</button>
   <small id="autherr" style="color:var(--bad)"></small>
 </section>
 
 <div id="app">
   <header>
     <strong id="who"></strong>
-    <span><button onclick="simulate()" title="Simula um cliente escrevendo (modo mock)">Simular cliente</button> <button onclick="logout()">Sair</button></span>
+    <span>
+      <button onclick="openWiz(2)" id="btnWa" title="Conectar ou ver os números de WhatsApp">WhatsApp</button>
+      <button onclick="simulate()" title="Simula um cliente escrevendo (modo teste)">Simular cliente</button>
+      <button onclick="logout()">Sair</button>
+    </span>
   </header>
   <aside>
     <div class="tabs">
@@ -56,21 +76,26 @@
   <main>
     <div id="empty">Selecione uma conversa</div>
     <div id="chat" class="hide" style="display:flex;flex-direction:column;flex:1;min-height:0">
-      <div style="padding:10px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">
+      <div style="padding:10px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
         <strong id="ctitle"></strong>
         <span><button id="claimBtn" class="primary" onclick="claim()">Assumir</button> <button onclick="closeConv()">Encerrar</button></span>
       </div>
       <div id="msgs"></div>
+      <div id="asCustomer"><span>Teste: responder como o cliente</span><input id="custText" placeholder="Mensagem do cliente..." onkeydown="if(event.key==='Enter')custSend()"><button onclick="custSend()">Enviar como cliente</button></div>
       <div id="bar"><input id="text" placeholder="Digite a resposta..." onkeydown="if(event.key==='Enter')send()"><button class="primary" onclick="send()">Enviar</button></div>
     </div>
   </main>
 </div>
+
+<div id="wiz"><div id="wizCard"></div></div>
 <div id="toast"></div>
 
 <script>
-let token = null, me = null, view = 'all', convs = [], sel = null, ws = null;
+let token = null, me = null, view = 'all', convs = [], sel = null, ws = null, ob = null, wizStep = 1, wizTab = 'test', pendingPlan = null;
 const $ = id => document.getElementById(id);
 const STATUS = { queued:'na fila…', sending:'enviando…', sent:'✓ enviada', delivered:'✓✓ entregue', read:'✓✓ lida', failed:'✗ falhou', received:'' };
+const PLAN_INFO = { starter:['Starter','R$ 197/mês','1 número, 2 atendentes'], pro:['Pro','R$ 497/mês','1 número, 5 atendentes'], business:['Business','R$ 1.197/mês','2 números, 15 atendentes'] };
+const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
 
 async function api(path, opts = {}) {
   const r = await fetch(path, { ...opts, headers: { 'Content-Type':'application/json', ...(token ? { Authorization:'Bearer '+token } : {}) }, body: opts.body ? JSON.stringify(opts.body) : undefined });
@@ -78,17 +103,78 @@ async function api(path, opts = {}) {
   if (!r.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Erro ' + r.status);
   return data;
 }
-function toast(t) { const e = $('toast'); e.textContent = t; e.style.display = 'block'; setTimeout(() => e.style.display = 'none', 2800); }
+function toast(t) { const e = $('toast'); e.textContent = t; e.style.display = 'block'; setTimeout(() => e.style.display = 'none', 3200); }
 
-async function enter(data) {
+// ---- plano escolhido no site (?plan=pro) ----
+const qp = new URLSearchParams(location.search).get('plan');
+if (qp && PLAN_INFO[qp]) {
+  pendingPlan = qp;
+  $('planBanner').classList.remove('hide');
+  $('planBanner').innerHTML = `Plano escolhido: <b>${PLAN_INFO[qp][0]}</b> (${PLAN_INFO[qp][1]}). <b>Versão de teste: nenhuma cobrança.</b> Crie a conta da sua empresa para continuar.`;
+}
+
+async function enter(data, justRegistered) {
   token = data.token; me = data.user; try { localStorage.setItem('tk', token); } catch {}
   $('auth').style.display = 'none'; $('app').style.display = 'grid'; $('who').textContent = me.name + ' · ' + me.role;
-  await loadList(); connect();
+  if (justRegistered && pendingPlan) { try { await api('/billing/test-checkout', { method:'POST', body:{ plan: pendingPlan } }); } catch (e) { toast(e.message); } }
+  await loadOnboarding(); await loadList(); connect();
+  if (!ob.plan || ob.channels.length === 0) openWiz(!ob.plan ? 1 : 2);
 }
-async function login() { try { enter(await api('/auth/login', { method:'POST', body:{ email:$('email').value, password:$('password').value } })); } catch (e) { $('autherr').textContent = e.message; } }
-async function register() { try { enter(await api('/auth/register', { method:'POST', body:{ company:$('company').value, name:$('name').value, email:$('email').value, password:$('password').value } })); } catch (e) { $('autherr').textContent = e.message; } }
-function logout() { try { localStorage.removeItem('tk'); } catch {} location.reload(); }
+async function loadOnboarding() { ob = await api('/onboarding'); $('btnWa').textContent = ob.channels.length ? 'WhatsApp ✓ ' + ob.channels.length : 'Conectar WhatsApp'; }
+async function login() { try { enter(await api('/auth/login', { method:'POST', body:{ email:$('email').value, password:$('password').value } }), false); } catch (e) { $('autherr').textContent = e.message; } }
+async function register() { try { enter(await api('/auth/register', { method:'POST', body:{ company:$('company').value, name:$('name').value, email:$('email').value, password:$('password').value } }), true); } catch (e) { $('autherr').textContent = e.message; } }
+function logout() { try { localStorage.removeItem('tk'); } catch {} location.href = '/app/'; }
 
+// ---- assistente: plano -> conectar WhatsApp -> pronto ----
+function openWiz(step) { wizStep = step; $('wiz').style.display = 'flex'; renderWiz(); }
+function closeWiz() { $('wiz').style.display = 'none'; loadList(); }
+function dots() { const n = ['1. Plano', '2. Conectar WhatsApp', '3. Pronto']; return '<div class="dots">' + n.map((t, i) => i + 1 === wizStep ? `<b>${t}</b>` : t).join(' › ') + '</div>'; }
+function renderWiz() {
+  const c = $('wizCard');
+  if (wizStep === 1) {
+    c.innerHTML = dots() + `<h2>Escolha o plano</h2><p>Versão de teste: o plano só libera os recursos, <b>nenhuma cobrança é feita</b>.</p>
+      <div class="plans3">${Object.entries(PLAN_INFO).map(([k, v]) => `<button data-plan="${k}" class="${ob.plan === k ? 'on' : ''}"><b>${v[0]}</b><span>${v[1]}</span><small>${v[2]}</small></button>`).join('')}</div>
+      <div class="row"><button class="primary" id="wizNext" ${ob.plan ? '' : 'disabled'}>Continuar</button></div>`;
+    c.querySelectorAll('[data-plan]').forEach(b => b.onclick = async () => { try { await api('/billing/test-checkout', { method:'POST', body:{ plan:b.dataset.plan } }); await loadOnboarding(); renderWiz(); } catch (e) { toast(e.message); } });
+    $('wizNext').onclick = () => { wizStep = ob.channels.length ? 3 : 2; renderWiz(); };
+  } else if (wizStep === 2) {
+    const used = ob.channels.length, limit = ob.number_limit;
+    c.innerHTML = dots() + `<h2>Conecte o seu WhatsApp</h2>
+      <p>Plano <b>${esc(ob.plan_name || '')}</b>: ${used} de ${limit} número(s) conectado(s).</p>
+      <div class="seg"><button data-t="test" class="${wizTab === 'test' ? 'on' : ''}">Testar agora (qualquer número)</button><button data-t="real" class="${wizTab === 'real' ? 'on' : ''}">Número real (Meta)</button></div>
+      <div id="tabBody"></div>
+      <div class="row">${used ? '<button class="primary" id="wizNext">Continuar</button>' : ''}</div>`;
+    c.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { wizTab = b.dataset.t; renderWiz(); });
+    $('tabBody').innerHTML = wizTab === 'test' ? `
+      <div class="ok">Modo de teste: digite <b>qualquer número</b>. Ele é conectado de mentira (nada é enviado ao WhatsApp de verdade), só para você experimentar o atendimento.</div>
+      ${ob.channels.map(ch => `<div class="ok">✓ Conectado: <b>${esc(ch.display_phone)}</b></div>`).join('')}
+      ${used < limit ? '<input id="phone" placeholder="Ex.: 27 99999-1234" inputmode="tel"><button class="primary" id="connBtn">Conectar este número</button>' : '<p>Você já usou todos os números do plano.</p>'}` : `
+      <p>Para usar um número de verdade, a Meta exige a API oficial do WhatsApp (não existe QR Code nela). Passo a passo:</p>
+      <ol class="guide">
+        <li>Crie uma conta em <b>developers.facebook.com</b> e um app do tipo <b>Business</b>.</li>
+        <li>Adicione o produto <b>WhatsApp</b> ao app e anote o <b>Phone number ID</b> e o <b>token de acesso</b>.</li>
+        <li>Verifique a sua empresa no Meta Business e cadastre uma forma de pagamento (a Meta cobra por mensagem).</li>
+        <li>O número precisa estar liberado para a API. Confira as regras atuais da Meta se ele já é usado no aplicativo comum.</li>
+        <li>Em <b>Configuração do webhook</b>, informe <code>https://SEU-DOMINIO/webhooks/whatsapp</code> e o token de verificação definido em <code>WHATSAPP_VERIFY_TOKEN</code>. Assine o campo <code>messages</code>.</li>
+        <li>No servidor, defina <code>CHANNEL_PROVIDER=whatsapp</code> e cadastre o canal com <code>POST /channels</code> (Phone number ID e token).</li>
+      </ol>
+      <p>Isso exige o sistema hospedado com endereço público, o que ainda não temos. Por enquanto use a aba de teste.</p>`;
+    if ($('connBtn')) { $('connBtn').onclick = async () => { try { await api('/channels/test-connect', { method:'POST', body:{ phone:$('phone').value } }); await loadOnboarding(); toast('Número conectado (teste)'); wizStep = 3; renderWiz(); } catch (e) { toast(e.message); } }; $('phone').onkeydown = e => { if (e.key === 'Enter') $('connBtn').click(); }; }
+    if ($('wizNext')) $('wizNext').onclick = () => { wizStep = 3; renderWiz(); };
+  } else {
+    c.innerHTML = dots() + `<h2>WhatsApp conectado</h2>
+      ${ob.channels.map(ch => `<div class="ok">✓ <b>${esc(ch.display_phone)}</b> ${ch.is_test ? '(teste)' : ''}</div>`).join('')}
+      <p>Agora você já pode atender. Crie clientes de exemplo na fila, entre no atendimento e use <b>Assumir</b> em uma conversa. Dentro da conversa há um campo para responder como se fosse o cliente.</p>
+      <div class="row"><button id="mkDemo">Criar 3 clientes de exemplo</button><button class="primary" id="goApp">Ir para o atendimento</button></div>`;
+    $('mkDemo').onclick = async () => {
+      const demo = [['5511987650001', 'Marina', 'Oi! Vocês entregam amanhã?'], ['5511987650002', 'Carlos', 'Quero saber o valor do plano Pro.'], ['5511987650003', 'Fernanda', 'Preciso falar com alguém sobre meu pedido.']];
+      try { for (const [phone, name, text] of demo) await api('/dev/inbound', { method:'POST', body:{ phone, name, text } }); toast('3 clientes chegaram na fila'); } catch (e) { toast(e.message); }
+    };
+    $('goApp').onclick = () => { view = 'queue'; document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.v === 'queue')); closeWiz(); };
+  }
+}
+
+// ---- atendimento ----
 function connect() {
   ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws?token=' + token);
   ws.onmessage = ev => {
@@ -96,18 +182,15 @@ function connect() {
     if (e.type.startsWith('conversation')) { loadList(); if (sel && e.conversation.id === sel.id) { sel = e.conversation; renderHead(); } }
     if (e.type === 'message.new' || e.type === 'message.status') { if (sel && e.message.conversation_id === sel.id) upsertMsg(e.message); if (e.type === 'message.new') loadList(); }
   };
-  ws.onclose = () => { if (token) setTimeout(connect, 1500); };  // reconecta sozinho
+  ws.onclose = () => { if (token) setTimeout(connect, 1500); };
   setInterval(() => ws.readyState === 1 && ws.send('ping'), 25000);
 }
-
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { view = b.dataset.v; document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b)); loadList(); });
 
 async function loadList() {
   convs = await api('/conversations?view=' + view);
-  $('list').innerHTML = convs.map(c => `<div class="conv ${sel && sel.id === c.id ? 'sel' : ''}" onclick="openConv('${c.id}')"><b>${esc(c.contact.name || c.contact.phone)}</b><small>${esc(c.last_preview)}</small><br><small>${c.status === 'queue' ? 'aguardando desde ' + new Date(c.waiting_since).toLocaleTimeString() : c.assigned_to === me.id ? 'com você' : 'em atendimento'}</small></div>`).join('') || '<p style="padding:14px;color:var(--mute)">Nenhuma conversa.</p>';
+  $('list').innerHTML = convs.map(c => `<div class="conv ${sel && sel.id === c.id ? 'sel' : ''}" onclick="openConv('${c.id}')"><b>${esc(c.contact.name || c.contact.phone)}</b><small>${esc(c.last_preview)}</small><br><small>${c.status === 'queue' ? 'aguardando desde ' + new Date(c.waiting_since).toLocaleTimeString() : c.assigned_to === me.id ? 'com você' : 'em atendimento'}</small></div>`).join('') || '<p style="padding:14px;color:var(--mute)">Nenhuma conversa nesta aba.</p>';
 }
-const esc = s => (s || '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
-
 async function openConv(id) {
   sel = convs.find(c => c.id === id); $('empty').classList.add('hide'); $('chat').classList.remove('hide');
   renderHead(); $('msgs').innerHTML = '';
@@ -130,13 +213,18 @@ async function send() {
   const t = $('text').value.trim(); if (!t) return; $('text').value = '';
   try { upsertMsg(await api(`/conversations/${sel.id}/messages`, { method:'POST', body:{ body:t, client_id: crypto.randomUUID() } })); } catch (e) { toast(e.message); $('text').value = t; }
 }
+async function custSend() {
+  const t = $('custText').value.trim(); if (!t || !sel) return; $('custText').value = '';
+  try { await api('/dev/inbound', { method:'POST', body:{ phone: sel.contact.phone, name: sel.contact.name, text: t } }); } catch (e) { toast(e.message); }
+}
 async function resend(id) { try { upsertMsg(await api(`/messages/${id}/resend`, { method:'POST' })); } catch (e) { toast(e.message); } }
 async function simulate() {
+  if (!ob || !ob.channels.length) { openWiz(2); return; }
   const phone = prompt('Telefone do cliente simulado', '5511999990000'); if (!phone) return;
   const text = prompt('Mensagem do cliente', 'Olá, gostaria de informações'); if (!text) return;
   try { await api('/dev/inbound', { method:'POST', body:{ phone, name:'Cliente ' + phone.slice(-4), text } }); } catch (e) { toast(e.message); }
 }
-try { const t = localStorage.getItem('tk'); if (t) { token = t; api('/me').then(u => enter({ token: t, user: u })).catch(() => { token = null; }); } } catch {}
+try { const t = localStorage.getItem('tk'); if (t) { token = t; api('/me').then(u => enter({ token: t, user: u }, false)).catch(() => { token = null; }); } } catch {}
 </script>
 </body>
 </html>

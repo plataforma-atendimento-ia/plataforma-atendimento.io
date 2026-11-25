@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..config import settings
 from ..deps import admin_only, current_user, get_db
 from ..models import Channel, Tenant, User
 from ..security import hash_password, make_token, verify_password
@@ -97,6 +98,80 @@ async def create_user(body: UserIn, admin: User = Depends(admin_only), s: AsyncS
         await s.rollback()
         raise HTTPException(409, "e-mail já cadastrado")
     return user_out(u)
+
+
+PLANS = {
+    "starter": {"name": "Starter", "numbers": 1},
+    "pro": {"name": "Pro", "numbers": 1},
+    "business": {"name": "Business", "numbers": 2},
+}
+
+
+class PlanIn(BaseModel):
+    plan: str = Field(pattern="^(starter|pro|business)$")
+
+
+class TestConnectIn(BaseModel):
+    phone: str = Field(min_length=8, max_length=30)
+
+
+def _require_mock():
+    if settings.channel_provider != "mock":
+        raise HTTPException(404, "disponível apenas em modo de teste")
+
+
+def _channel_out(c: Channel) -> dict:
+    return {"id": c.id, "display_phone": c.display_phone or c.phone_number_id, "is_test": bool(c.is_test)}
+
+
+@router.get("/onboarding")
+async def onboarding(user: User = Depends(current_user), s: AsyncSession = Depends(get_db)):
+    tenant = await s.get(Tenant, user.tenant_id)
+    chans = (await s.execute(select(Channel).where(Channel.tenant_id == user.tenant_id))).scalars().all()
+    plan = PLANS.get(tenant.plan or "")
+    return {
+        "plan": tenant.plan,
+        "plan_name": plan["name"] if plan else None,
+        "number_limit": plan["numbers"] if plan else 1,
+        "channels": [_channel_out(c) for c in chans],
+        "test_mode": settings.channel_provider == "mock",
+        "plans": {k: v["name"] for k, v in PLANS.items()},
+    }
+
+
+@router.post("/billing/test-checkout")
+async def test_checkout(body: PlanIn, admin: User = Depends(admin_only), s: AsyncSession = Depends(get_db)):
+    """COMPRA DE TESTE: apenas registra o plano, sem cobrança. O pagamento real (Stripe) é a Fase 4."""
+    _require_mock()
+    tenant = await s.get(Tenant, admin.tenant_id)
+    tenant.plan = body.plan
+    await s.commit()
+    return {"plan": tenant.plan, "plan_name": PLANS[tenant.plan]["name"], "charged": False}
+
+
+@router.post("/channels/test-connect", status_code=201)
+async def test_connect(body: TestConnectIn, admin: User = Depends(admin_only), s: AsyncSession = Depends(get_db)):
+    """Conecta um número SIMULADO (qualquer telefone). Não fala com a Meta."""
+    _require_mock()
+    digits = "".join(ch for ch in body.phone if ch.isdigit())
+    if not 8 <= len(digits) <= 15:
+        raise HTTPException(422, "informe um telefone com 8 a 15 dígitos")
+    tenant = await s.get(Tenant, admin.tenant_id)
+    limit = PLANS.get(tenant.plan or "", {"numbers": 1})["numbers"]
+    existing = (await s.execute(select(Channel).where(Channel.tenant_id == admin.tenant_id))).scalars().all()
+    if any((c.display_phone or "") == "+" + digits for c in existing):
+        raise HTTPException(409, "este número já está conectado")
+    if len(existing) >= limit:
+        raise HTTPException(409, f"o plano permite {limit} número(s) de WhatsApp")
+    ch = Channel(
+        tenant_id=admin.tenant_id,
+        phone_number_id=f"test-{admin.tenant_id}-{len(existing) + 1}",
+        display_phone="+" + digits,
+        is_test=True,
+    )
+    s.add(ch)
+    await s.commit()
+    return _channel_out(ch)
 
 
 @router.post("/channels", status_code=201)

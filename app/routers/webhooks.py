@@ -111,10 +111,8 @@ async def simulate_inbound(body: SimulateIn, user: User = Depends(current_user),
     channel = (
         await s.execute(select(Channel).where(Channel.tenant_id == user.tenant_id).limit(1))
     ).scalar_one_or_none()
-    if channel is None:  # cria um canal simulado automaticamente
-        channel = Channel(tenant_id=user.tenant_id, phone_number_id=f"mock-{user.tenant_id}")
-        s.add(channel)
-        await s.commit()
+    if channel is None:
+        raise HTTPException(409, "conecte um número de WhatsApp antes de simular clientes")
     from ..models import uid
 
     created = await _store_inbound(s, channel, body.phone, body.name, body.text, body.wamid or f"sim.{uid()}")

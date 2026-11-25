@@ -38,7 +38,7 @@ jobs:
           mkdir _site
           cp app/static/site/index.html _site/index.html
           if [ -z "$APP_URL" ]; then APP_URL="#cta"; fi
-          sed -i "s|href=\"/app/\"|href=\"${APP_URL}\"|g" _site/index.html
+          sed -i "s|href=\"/app/?plan=[a-z]*\"|href=\"${APP_URL}\"|g; s|href=\"/app/\"|href=\"${APP_URL}\"|g" _site/index.html
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

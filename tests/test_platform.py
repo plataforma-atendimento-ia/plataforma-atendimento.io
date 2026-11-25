@@ -19,6 +19,50 @@ async def test_sales_site_and_app_are_served(client):
     assert app_page.status_code == 200 and "Atendimento" in app_page.text
 
 
+async def test_buy_plan_connect_whatsapp_and_take_customer(client):
+    """Fluxo completo do teste: comprar plano -> conectar número -> cliente chega -> assumir -> responder."""
+    admin = await register(client)
+    ob = (await client.get("/onboarding", headers=admin)).json()
+    assert ob["plan"] is None and ob["channels"] == [] and ob["test_mode"] is True
+
+    # sem número conectado, simular cliente é recusado
+    r = await client.post("/dev/inbound", headers=admin, json={"phone": "5511900000001", "text": "oi"})
+    assert r.status_code == 409
+
+    r = await client.post("/billing/test-checkout", headers=admin, json={"plan": "pro"})
+    assert r.json() == {"plan": "pro", "plan_name": "Pro", "charged": False}
+
+    r = await client.post("/channels/test-connect", headers=admin, json={"phone": "+55 (27) 99999-1234"})
+    assert r.status_code == 201 and r.json()["display_phone"] == "+5527999991234"
+
+    conv = await inbound(client, admin, phone="5511900000001", text="Quero comprar")
+    assert (await client.post(f"/conversations/{conv}/claim", headers=admin)).status_code == 200
+    r = await client.post(f"/conversations/{conv}/messages", headers=admin, json={"body": "Claro!"})
+    assert r.status_code == 201
+    await process_batch(provider)
+    assert provider.sent[-1]["body"] == "Claro!"
+
+
+async def test_plan_limits_whatsapp_numbers(client):
+    admin = await register(client)
+    await client.post("/billing/test-checkout", headers=admin, json={"plan": "starter"})
+    assert (await client.post("/channels/test-connect", headers=admin, json={"phone": "5527900000001"})).status_code == 201
+    r = await client.post("/channels/test-connect", headers=admin, json={"phone": "5527900000002"})
+    assert r.status_code == 409 and "plano" in r.json()["detail"]
+    # plano Business permite 2
+    await client.post("/billing/test-checkout", headers=admin, json={"plan": "business"})
+    assert (await client.post("/channels/test-connect", headers=admin, json={"phone": "5527900000002"})).status_code == 201
+
+
+async def test_connect_validation_and_permissions(client):
+    admin = await register(client)
+    agent = await new_agent(client, admin, "ag@a.com")
+    assert (await client.post("/channels/test-connect", headers=agent, json={"phone": "5527900000001"})).status_code == 403
+    assert (await client.post("/billing/test-checkout", headers=agent, json={"plan": "pro"})).status_code == 403
+    assert (await client.post("/channels/test-connect", headers=admin, json={"phone": "abc12345"})).status_code == 422
+    assert (await client.post("/billing/test-checkout", headers=admin, json={"plan": "gratis"})).status_code == 422
+
+
 async def test_login_wrong_password(client):
     await register(client)
     r = await client.post("/auth/login", json={"email": "admin@a.com", "password": "errada-123"})

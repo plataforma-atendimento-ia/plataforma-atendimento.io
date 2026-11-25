@@ -15,6 +15,8 @@ class Tenant(Base):
     __tablename__ = "tenants"
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
     name: Mapped[str] = mapped_column(String(200))
+    # starter | pro | business. Hoje só "compra de teste" (sem cobrança); Stripe entra na Fase 4.
+    plan: Mapped[str | None] = mapped_column(String(20), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
@@ -36,6 +38,8 @@ class Channel(Base):
     tenant_id: Mapped[str] = mapped_column(ForeignKey("tenants.id"), index=True)
     type: Mapped[str] = mapped_column(String(20), default="whatsapp")
     phone_number_id: Mapped[str] = mapped_column(String(64), unique=True)
+    display_phone: Mapped[str | None] = mapped_column(String(32), nullable=True)  # número mostrado ao usuário
+    is_test: Mapped[bool] = mapped_column(default=False)  # canal simulado (sem Meta)
     # TODO(fase 4): criptografar em repouso
     access_token: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
