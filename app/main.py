@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .channels import provider
@@ -54,4 +54,5 @@ app.mount("/app", StaticFiles(directory=Path(__file__).parent / "static", html=T
 
 @app.get("/", include_in_schema=False)
 async def root():
-    return RedirectResponse("/app/")
+    """Site de vendas. O sistema de atendimento fica em /app/."""
+    return FileResponse(Path(__file__).parent / "static" / "site" / "index.html")

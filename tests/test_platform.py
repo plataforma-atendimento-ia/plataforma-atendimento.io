@@ -11,6 +11,14 @@ from app.outbox import process_batch
 from .conftest import inbound, new_agent, register
 
 
+async def test_sales_site_and_app_are_served(client):
+    site = await client.get("/")
+    assert site.status_code == 200 and "Plataforma de Atendimento IA" in site.text
+    assert 'href="/app/"' in site.text  # botão que leva ao sistema
+    app_page = await client.get("/app/")
+    assert app_page.status_code == 200 and "Atendimento" in app_page.text
+
+
 async def test_login_wrong_password(client):
     await register(client)
     r = await client.post("/auth/login", json={"email": "admin@a.com", "password": "errada-123"})

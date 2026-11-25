@@ -7,7 +7,9 @@ Backend FastAPI (Python) + caixa de entrada web em tempo real. Multi-tenant. Fun
 .\run.ps1          # sobe em http://127.0.0.1:8000
 .\test.ps1         # roda os testes
 ```
-Abra http://127.0.0.1:8000, clique em **Criar conta da empresa**, depois em **Simular cliente** para gerar uma conversa. Abra uma segunda janela anônima com outro usuário (admin cria atendentes em `POST /users`, docs em `/docs`) para testar "assumir" simultâneo.
+Em http://127.0.0.1:8000 fica o **site de vendas** (`app/static/site/index.html`, uma página única); o sistema de atendimento fica em http://127.0.0.1:8000/app/. Antes de publicar o site: trocar o nome provisório da marca e confirmar os preços (ver `docs/PRICING.md`).
+
+No sistema (/app/), clique em **Criar conta da empresa**, depois em **Simular cliente** para gerar uma conversa. Abra uma segunda janela anônima com outro usuário (admin cria atendentes em `POST /users`, docs em `/docs`) para testar "assumir" simultâneo.
 
 ## O que já funciona
 - Cadastro de empresa (tenant), login, usuários e papéis (admin/atendente), isolamento entre empresas.
