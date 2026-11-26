@@ -323,7 +323,7 @@ async def google_disconnect(user: User = Depends(current_user), s: AsyncSession 
 
 
 # ---------- escritório de demonstração ----------
-DEMO_PASSWORD = "demo-escritorio-2026"  # só em TEST_MODE; contas de demonstração locais
+DEMO_PASSWORD = "Demo-escritorio-2026"  # só em TEST_MODE; contas de demonstração locais
 DEMO_TEAM = [
     ("Pedro Albuquerque", "Dr.", "Advogado de precatórios", ["precatorios"], "precatorios"),
     ("Ana Ribeiro", "Dra.", "Advogada previdenciária", ["previdenciario"], None),

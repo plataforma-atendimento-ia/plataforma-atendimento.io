@@ -17,7 +17,7 @@ from app.outbox import process_batch
 
 from .conftest import register
 
-PWD = "demo-escritorio-2026"
+PWD = "Demo-escritorio-2026"
 DEPTS = [
     DeptInfo(slug=d["slug"], name=d["name"], description=d["description"],
              keywords=[k.strip() for k in d["keywords"].split(",")], needs_consult=d.get("needs_consult", False))

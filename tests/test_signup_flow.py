@@ -44,8 +44,8 @@ async def test_niche_can_be_answered_again_without_losing_sectors(client):
 
 async def test_niche_validation_and_permissions(client):
     admin = await register(client, "Moraes Advocacia")
-    r = await client.post("/users", headers=admin, json={"name": "Ag", "email": "ag@a.com", "password": "senha-forte-1"})
-    tok = (await client.post("/auth/login", json={"email": "ag@a.com", "password": "senha-forte-1"})).json()["token"]
+    r = await client.post("/users", headers=admin, json={"name": "Ag", "email": "ag@a.com", "password": "Senha-forte-1"})
+    tok = (await client.post("/auth/login", json={"email": "ag@a.com", "password": "Senha-forte-1"})).json()["token"]
     assert (await client.post("/onboarding/niche", headers={"Authorization": f"Bearer {tok}"}, json=LAW)).status_code == 403
     assert (await client.post("/onboarding/niche", headers=admin, json={**LAW, "segment": "clinica"})).status_code == 422
     assert (await client.post("/onboarding/niche", headers=admin, json={**LAW, "areas": ["astrologia"]})).status_code == 422
@@ -58,3 +58,34 @@ async def test_custom_plan_request_is_public_and_validated(client):
     ok = await client.post("/sales/custom-plan", json={"name": "Rui", "company": "Rede Jurídica", "phone": "27999990000", "message": "10 unidades"})
     assert ok.status_code == 201
     assert (await client.post("/sales/custom-plan", json={"name": "R", "company": "X", "phone": "1"})).status_code == 422
+
+
+BASE = {"company": "Moraes Advocacia", "name": "Beatriz", "email": "b@moraes.adv.br",
+        "document": "11.222.333/0001-81", "phone": "(27) 99999-0000", "password": "Senha-forte-1"}
+
+
+async def test_password_rules_on_signup(client):
+    for weak, missing in [("Curta-1", "8 caracteres"), ("semmaiuscula-1", "maiúscula"), ("SemEspecial1", "especial")]:
+        r = await client.post("/auth/register", json={**BASE, "password": weak})
+        assert r.status_code == 422 and missing in r.json()["detail"], (weak, r.text)
+    assert (await client.post("/auth/register", json=BASE)).status_code == 201
+
+
+async def test_company_document_and_phone_are_validated(client):
+    r = await client.post("/auth/register", json={**BASE, "document": "11.222.333/0001-82"})
+    assert r.status_code == 422 and "CNPJ ou CPF" in r.json()["detail"]
+    assert (await client.post("/auth/register", json={**BASE, "phone": "1234"})).status_code == 422
+    ok_cpf = await client.post("/auth/register", json={**BASE, "document": "529.982.247-25", "email": "cpf@adv.br"})
+    assert ok_cpf.status_code == 201  # advogado autônomo pode usar CPF
+
+
+async def test_team_member_password_follows_the_same_rules(client):
+    admin = await register(client)
+    r = await client.post("/users", headers=admin, json={"name": "Ana", "email": "ana@a.com", "password": "fraca123"})
+    assert r.status_code == 422 and "maiúscula" in r.json()["detail"]
+
+
+async def test_old_accounts_can_still_log_in(client):
+    # a regra vale para senhas novas; o login não recusa contas antigas
+    assert (await client.post("/auth/register", json=BASE)).status_code == 201
+    assert (await client.post("/auth/login", json={"email": BASE["email"], "password": BASE["password"]})).status_code == 200

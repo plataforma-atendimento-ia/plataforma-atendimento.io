@@ -59,6 +59,11 @@ label.f{display:grid;gap:5px;font-size:12.5px;color:var(--mute);font-weight:500}
 .areas{display:grid;gap:8px}
 .area{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer}
 .area input{width:auto;margin-top:3px}
+.pw{display:flex;gap:6px;align-items:center} .pw input{flex:1}
+.rules{margin:-4px 0 0;padding:0;list-style:none;display:grid;gap:3px;font-size:12.5px;color:var(--mute)}
+.rules li::before{content:"○ "} .rules li.ok{color:var(--accent)} .rules li.ok::before{content:"✓ "}
+.or{display:flex;align-items:center;gap:10px;color:var(--mute);font-size:12.5px} .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+.wabar{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--warn-soft);font-size:13px;border-bottom:1px solid var(--line)}
 /* login */
 #auth{min-height:100%;display:grid;grid-template-columns:1.1fr 1fr}
 #auth .side{background:var(--rail);color:#eef3f8;padding:56px clamp(24px,5vw,72px);display:flex;flex-direction:column;justify-content:space-between;gap:40px;
@@ -240,6 +245,7 @@ ol.guide{margin:0;padding-left:20px;display:grid;gap:6px}
       <div class="list">
         <div class="top"><div><div class="eyebrow" id="listEyebrow">Fila</div><h3 id="listTitle">Meus atendimentos</h3></div>
           <button class="sm" id="btnSim" title="Simula um cliente escrevendo no WhatsApp de teste">+ Cliente de teste</button></div>
+        <div class="wabar hide" id="waBar"><span>Conecte o WhatsApp do escritório para começar a receber clientes.</span><button class="sm primary" id="waBarBtn">Conectar</button></div>
         <div class="rows" id="rows"></div>
       </div>
       <div class="chat" id="chat">
@@ -374,16 +380,30 @@ function showAuth(step) {
     sideSteps(1); const p = PLANS.find(x => x.k === FLOW.plan);
     c.innerHTML = `<div class="eyebrow">Passo 2 de 5</div><h2>Crie a conta do escritório</h2>
       <div class="banner">Plano <b>${p.name}</b> · ${p.price}${p.per} <a href="#" id="toPlans" style="margin-left:6px">Trocar</a></div>
-      <label class="f">Nome do escritório<input id="company" autocomplete="organization"></label>
+      <div class="eyebrow" style="margin-top:4px">Dados da empresa</div>
+      <label class="f">Nome do escritório<input id="company" autocomplete="organization" placeholder="Ex.: Moraes & Lima Advogados"></label>
+      <div class="grid2"><label class="f">CNPJ (ou CPF, se for autônomo)<input id="document" inputmode="numeric" placeholder="00.000.000/0000-00"></label>
+        <label class="f">Telefone / WhatsApp<input id="phone" inputmode="tel" autocomplete="tel" placeholder="(27) 99999-0000"></label></div>
+      <div class="eyebrow" style="margin-top:4px">Responsável pela conta</div>
       <label class="f">Seu nome<input id="name" autocomplete="name"></label>
-      <label class="f">E-mail<input id="email" type="email" autocomplete="email"></label>
-      <label class="f">Senha (mínimo 8 caracteres)<input id="password" type="password" autocomplete="new-password"></label>
+      <label class="f">E-mail empresarial (será o seu login)<input id="email" type="email" autocomplete="username" placeholder="voce@escritorio.com.br"></label>
+      <label class="f">Senha<span class="pw"><input id="password" type="password" autocomplete="new-password"><button type="button" class="ghost sm" data-eye="password">Mostrar</button></span></label>
+      <ul class="rules" id="pwRules"><li data-r="len">Pelo menos 8 caracteres</li><li data-r="up">Uma letra maiúscula</li><li data-r="sp">Um caractere especial (ex.: ! @ # $ -)</li></ul>
+      <label class="f">Confirme a senha<input id="password2" type="password" autocomplete="new-password"></label>
       <button class="primary" id="btnRegister">Criar conta e ir para o pagamento</button><small id="autherr" style="color:var(--bad)"></small>
       <a href="#" id="toLogin" class="small">Já tenho conta</a>`;
+    const pwOk = () => { const v = $('password').value, r = { len: v.length >= 8, up: /[A-ZÀ-Ý]/.test(v), sp: /[^A-Za-z0-9À-ÿ\s]/.test(v) };
+      document.querySelectorAll('#pwRules li').forEach(li => li.classList.toggle('ok', r[li.dataset.r])); return r.len && r.up && r.sp; };
+    $('password').oninput = pwOk;
     $('btnRegister').onclick = async () => {
+      $('autherr').textContent = '';
+      const need = ['company', 'document', 'phone', 'name', 'email'].find(id => !$(id).value.trim());
+      if (need) { $('autherr').textContent = 'Preencha todos os campos.'; $(need).focus(); return; }
+      if (!pwOk()) { $('autherr').textContent = 'A senha ainda não cumpre todas as regras.'; return; }
+      if ($('password').value !== $('password2').value) { $('autherr').textContent = 'As senhas não são iguais.'; return; }
       try {
-        const d = await api('/auth/register', { method:'POST', body:{ company:$('company').value, name:$('name').value, email:$('email').value, password:$('password').value } });
-        S.token = d.token; S.me = d.user; try { localStorage.setItem('tk', S.token); } catch {} showAuth('pay');
+        const d = await api('/auth/register', { method:'POST', body:{ company:$('company').value.trim(), document:$('document').value, phone:$('phone').value, name:$('name').value.trim(), email:$('email').value.trim(), password:$('password').value } });
+        S.token = d.token; S.me = d.user; try { sessionStorage.setItem('tk', S.token); } catch {} showAuth('pay');
       } catch (e) { $('autherr').textContent = e.message; }
     };
   } else if (step === 'pay') {
@@ -400,13 +420,19 @@ function showAuth(step) {
     };
   } else {
     sideSteps(null);
-    c.innerHTML = `<h2>Entrar no escritório</h2>
-      <label class="f">E-mail<input id="email" type="email" autocomplete="email"></label>
-      <label class="f">Senha<input id="password" type="password" autocomplete="current-password"></label>
+    c.innerHTML = `<div class="eyebrow">Área do escritório</div><h2 style="font-size:28px">Entrar</h2>
+      <p class="muted" style="margin:0">Use o e-mail e a senha da conta do escritório.</p>
+      <label class="f">E-mail<input id="email" type="email" autocomplete="username" placeholder="voce@escritorio.com.br"></label>
+      <label class="f">Senha<span class="pw"><input id="password" type="password" autocomplete="current-password"><button type="button" class="ghost sm" data-eye="password">Mostrar</button></span></label>
       <button class="primary" id="btnLogin">Entrar</button><small id="autherr" style="color:var(--bad)"></small>
-      <div class="banner">Ainda não é cliente? <a href="#" id="toPlans">Veja os planos e assine</a></div>`;
+      <div class="or"><span>Ainda não tem conta?</span></div>
+      <button id="toPlansBtn">Criar conta da empresa</button>
+      <p class="small muted" style="margin:0">Para criar a conta você escolhe um plano e informa os dados do escritório.</p>`;
+    $('toPlansBtn').onclick = () => showAuth('plans');
     $('btnLogin').onclick = async () => {
-      try { await enter(await api('/auth/login', { method:'POST', body:{ email:$('email').value, password:$('password').value } })); }
+      $('autherr').textContent = '';
+      if (!$('email').value || !$('password').value) { $('autherr').textContent = 'Preencha o e-mail e a senha.'; return; }
+      try { await enter(await api('/auth/login', { method:'POST', body:{ email:$('email').value.trim(), password:$('password').value } })); }
       catch (e) { $('autherr').textContent = e.message; }
     };
     $('password').onkeydown = e => { if (e.key === 'Enter') $('btnLogin').click(); };
@@ -414,19 +440,23 @@ function showAuth(step) {
   bindLinks();
 }
 function bindLinks() {
+  document.querySelectorAll('[data-eye]').forEach(b => b.onclick = () => { const i = $(b.dataset.eye); const show = i.type === 'password'; i.type = show ? 'text' : 'password'; b.textContent = show ? 'Ocultar' : 'Mostrar'; });
   if ($('toLogin')) $('toLogin').onclick = e => { e.preventDefault(); showAuth('login'); };
   if ($('toPlans')) $('toPlans').onclick = e => { e.preventDefault(); showAuth('plans'); };
 }
-$('btnLogout').onclick = () => { try { localStorage.removeItem('tk'); } catch {} location.href = '/app/'; };
+$('btnLogout').onclick = () => { try { sessionStorage.removeItem('tk'); } catch {} location.href = '/app/'; };
 
 async function enter(data) {
-  S.token = data.token; S.me = data.user; try { localStorage.setItem('tk', S.token); } catch {}
+  try { await enterInner(data); }
+  catch (e) { S.token = null; try { sessionStorage.removeItem('tk'); } catch {} showAuth('login'); if ($('autherr')) $('autherr').textContent = 'Não foi possível abrir o escritório: ' + e.message; }
+}
+async function enterInner(data) {
+  S.token = data.token; S.me = data.user; try { sessionStorage.setItem('tk', S.token); } catch {}
   const ob = await api('/onboarding');
   if (S.me.role === 'admin' && ob.subscription_status !== 'active') { FLOW.plan = FLOW.plan || ob.plan || 'pro'; showAuth('pay'); return; }
   $('auth').style.display = 'none'; $('app').style.display = 'grid';
   await refreshAll(); connectWS(); route();
   if (S.me.role === 'admin' && !S.ob.onboarded) openNiche();
-  else if (S.me.role === 'admin' && !linkedChannels().length) openWiz(2);
 }
 
 // perguntas do nicho (passo 4)
@@ -519,6 +549,7 @@ async function loadList() {
   try { S.convs = await api('/conversations?view=' + encodeURIComponent(S.view)); } catch (e) { toast(e.message); S.convs = []; }
   document.querySelectorAll('#qlist .q').forEach(b => b.classList.toggle('on', b.dataset.view === S.view));
   $('btnSim').classList.toggle('hide', !(S.ob?.test_mode && (S.ob.channels || []).some(c => c.is_test)));
+  $('waBar').classList.toggle('hide', !(S.me.role === 'admin' && S.ob && !linkedChannels().length));
   $('rows').innerHTML = S.convs.map(rowHtml).join('') || `<div class="empty"><h3>Nada por aqui</h3><p>${S.view === 'mine' ? 'Quando você assumir um atendimento, ele fica nesta lista.' : 'Nenhum cliente esperando nesta fila.'}</p></div>`;
   $('rows').querySelectorAll('.row').forEach(r => r.onclick = () => openConv(r.dataset.id));
 }
@@ -772,7 +803,7 @@ async function renderSettings() {
   $('aiInfo').innerHTML = (ob.automation_on ? '<span class="chip"><i style="background:var(--signal)"></i>Ligado</span>' : '<span class="chip">Desligado</span>');
   $('planInfo').innerHTML = ob.plan ? `<b>${esc(ob.plan_name)}</b> · ${linkedChannels().length} de ${ob.number_limit} número(s)` : '<span class="muted">Nenhum plano escolhido.</span>';
 }
-$('btnWa').onclick = () => openWiz(2); $('btnPlan').onclick = () => openWiz(1);
+$('btnWa').onclick = () => openWiz(2); $('waBarBtn').onclick = () => openWiz(2); $('btnPlan').onclick = () => openWiz(1);
 $('btnAuto').onclick = async () => { try { await api('/automation', { method:'PUT', body:{ enabled: !S.ob.automation_on } }); renderSettings(); } catch (e) { toast(e.message); } };
 
 function modal(html, sticky = false) { $('modal').dataset.sticky = sticky ? '1' : ''; $('mbox').innerHTML = html; $('modal').classList.add('on'); $('mbox').querySelectorAll('[data-close]').forEach(b => b.onclick = closeModal); }
@@ -842,8 +873,8 @@ function showQr() {
   tick(); qrTimer = setInterval(tick, 2000);
 }
 
-let _tk = null; try { _tk = localStorage.getItem('tk'); } catch {}
-if (_tk && !FLOW.plan) { S.token = _tk; api('/me').then(u => enter({ token:_tk, user:u })).catch(() => { S.token = null; showAuth('login'); }); }
+let _tk = null; try { localStorage.removeItem('tk'); _tk = sessionStorage.getItem('tk'); } catch {}
+if (_tk && !FLOW.plan) { S.token = _tk; api('/me').then(u => enter({ token:_tk, user:u })).catch(() => { S.token = null; try { sessionStorage.removeItem('tk'); } catch {} showAuth('login'); }); }
 else showAuth(FLOW.plan === 'custom' ? 'custom' : (FLOW.plan || location.hash === '#assinar') ? 'plans' : 'login');
 </script>
 </body>

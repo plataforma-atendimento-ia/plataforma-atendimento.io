@@ -106,9 +106,9 @@ async def test_claim_respects_concurrency_limit(client):
     await client.post(
         "/users",
         headers=admin,
-        json={"name": "L", "email": "l@a.com", "password": "senha-forte-1", "max_concurrent": 1},
+        json={"name": "L", "email": "l@a.com", "password": "Senha-forte-1", "max_concurrent": 1},
     )
-    ag = (await client.post("/auth/login", json={"email": "l@a.com", "password": "senha-forte-1"})).json()
+    ag = (await client.post("/auth/login", json={"email": "l@a.com", "password": "Senha-forte-1"})).json()
     h = {"Authorization": f"Bearer {ag['token']}"}
     c1 = await inbound(client, admin, phone="551100000001")
     await inbound(client, admin, phone="551100000002")

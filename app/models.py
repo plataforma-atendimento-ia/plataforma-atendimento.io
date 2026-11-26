@@ -20,6 +20,8 @@ class Tenant(Base):
     automation_on: Mapped[bool] = mapped_column(default=True)  # assistente automático ligado
     subscription_status: Mapped[str | None] = mapped_column(String(12), nullable=True)  # None|active (pagamento de teste)
     segment: Mapped[str | None] = mapped_column(String(20), nullable=True)  # nicho: "advocacia"
+    document: Mapped[str | None] = mapped_column(String(14), nullable=True)  # CNPJ ou CPF (só números)
+    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)  # telefone/WhatsApp do escritório
     onboarded: Mapped[bool] = mapped_column(default=False)  # já respondeu as perguntas do nicho
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 

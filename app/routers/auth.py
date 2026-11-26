@@ -11,16 +11,24 @@ from ..channels.bridge import request as bridge_request
 from ..config import settings
 from ..deps import admin_only, current_user, get_db
 from ..models import Channel, Tenant, User, uid
-from ..security import hash_password, make_token, verify_password
+from ..security import hash_password, make_token, only_digits, password_problems, valid_cnpj, valid_cpf, verify_password
 
 router = APIRouter(tags=["auth"])
 
 
 class RegisterIn(BaseModel):
     company: str = Field(min_length=2, max_length=200)
-    name: str = Field(min_length=1, max_length=200)
-    email: EmailStr
-    password: str = Field(min_length=8, max_length=200)
+    document: str = Field(min_length=11, max_length=20)  # CNPJ do escritório ou CPF do advogado
+    phone: str = Field(min_length=10, max_length=20)
+    name: str = Field(min_length=2, max_length=200)
+    email: EmailStr  # e-mail empresarial
+    password: str = Field(max_length=200)
+
+
+def check_password(p: str) -> None:
+    problems = password_problems(p)
+    if problems:
+        raise HTTPException(422, "A senha precisa " + ", ".join(problems) + ".")
 
 
 class LoginIn(BaseModel):
@@ -31,7 +39,7 @@ class LoginIn(BaseModel):
 class UserIn(BaseModel):
     name: str
     email: EmailStr
-    password: str = Field(min_length=8)
+    password: str = Field(max_length=200)
     role: str = Field(default="agent", pattern="^(admin|agent)$")
     max_concurrent: int = Field(default=5, ge=1, le=100)
 
@@ -47,7 +55,14 @@ def user_out(u: User) -> dict:
 
 @router.post("/auth/register", status_code=201)
 async def register(body: RegisterIn, s: AsyncSession = Depends(get_db)):
-    tenant = Tenant(name=body.company)
+    check_password(body.password)
+    doc = only_digits(body.document)
+    if not (valid_cnpj(doc) or valid_cpf(doc)):
+        raise HTTPException(422, "CNPJ ou CPF inválido. Confira os números.")
+    phone = only_digits(body.phone)
+    if not 10 <= len(phone) <= 13:
+        raise HTTPException(422, "Telefone inválido. Use DDD + número.")
+    tenant = Tenant(name=body.company.strip(), document=doc, phone=phone)
     s.add(tenant)
     await s.flush()
     user = User(
@@ -88,6 +103,7 @@ async def list_users(user: User = Depends(current_user), s: AsyncSession = Depen
 
 @router.post("/users", status_code=201)
 async def create_user(body: UserIn, admin: User = Depends(admin_only), s: AsyncSession = Depends(get_db)):
+    check_password(body.password)
     u = User(
         tenant_id=admin.tenant_id,
         email=body.email.lower(),

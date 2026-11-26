@@ -32,7 +32,9 @@ async def client():
 
 async def register(client, company="Empresa", email="admin@a.com", automation=False):
     r = await client.post(
-        "/auth/register", json={"company": company, "name": "Admin", "email": email, "password": "senha-forte-1"}
+        "/auth/register",
+        json={"company": company, "name": "Admin", "email": email, "password": "Senha-forte-1",
+              "document": "11.222.333/0001-81", "phone": "(27) 99999-0000"},
     )
     assert r.status_code == 201, r.text
     headers = {"Authorization": f"Bearer {r.json()['token']}"}
@@ -43,10 +45,10 @@ async def register(client, company="Empresa", email="admin@a.com", automation=Fa
 
 async def new_agent(client, admin_headers, email):
     r = await client.post(
-        "/users", headers=admin_headers, json={"name": email, "email": email, "password": "senha-forte-1"}
+        "/users", headers=admin_headers, json={"name": email, "email": email, "password": "Senha-forte-1"}
     )
     assert r.status_code == 201, r.text
-    r = await client.post("/auth/login", json={"email": email, "password": "senha-forte-1"})
+    r = await client.post("/auth/login", json={"email": email, "password": "Senha-forte-1"})
     return {"Authorization": f"Bearer {r.json()['token']}"}
 
 
