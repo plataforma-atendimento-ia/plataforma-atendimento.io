@@ -17,7 +17,10 @@ class Tenant(Base):
     name: Mapped[str] = mapped_column(String(200))
     # starter | pro | business. Hoje só "compra de teste" (sem cobrança); Stripe entra na Fase 4.
     plan: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    automation_on: Mapped[bool] = mapped_column(default=True)  # roteiro automático de qualificação
+    automation_on: Mapped[bool] = mapped_column(default=True)  # assistente automático ligado
+    subscription_status: Mapped[str | None] = mapped_column(String(12), nullable=True)  # None|active (pagamento de teste)
+    segment: Mapped[str | None] = mapped_column(String(20), nullable=True)  # nicho: "advocacia"
+    onboarded: Mapped[bool] = mapped_column(default=False)  # já respondeu as perguntas do nicho
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
@@ -98,6 +101,19 @@ class GoogleCalendarLink(Base):
     calendar_id: Mapped[str] = mapped_column(String(200), default="primary")
     refresh_token: Mapped[str] = mapped_column(Text)
     connected_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class CustomPlanRequest(Base):
+    """Pedido de plano personalizado (hoje só guarda o contato; no futuro leva ao atendimento comercial)."""
+
+    __tablename__ = "custom_plan_requests"
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
+    name: Mapped[str] = mapped_column(String(200))
+    company: Mapped[str] = mapped_column(String(200))
+    phone: Mapped[str] = mapped_column(String(32))
+    email: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class Channel(Base):

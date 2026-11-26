@@ -358,3 +358,76 @@ async def demo_law_firm(admin: User = Depends(admin_only), s: AsyncSession = Dep
         created.append({"name": ((title or "") + " " + name).strip(), "email": email, "sectors": slugs})
     await s.commit()
     return {"password": DEMO_PASSWORD, "users": created}
+
+
+# ---------- nicho: perguntas depois do pagamento ----------
+AREA_SLUGS = [d["slug"] for d in DEFAULT_DEPARTMENTS if not d.get("is_default")]
+
+
+class NicheIn(BaseModel):
+    segment: str = Field(pattern="^advocacia$")  # outros nichos entram depois
+    areas: list[str] = Field(min_length=1)  # áreas que o escritório atende
+    consult_areas: list[str] = Field(default_factory=list)  # áreas em que a análise exige consulta paga
+    consult_price_cents: int | None = Field(default=None, ge=0, le=10_000_000)
+    work_hours: dict[str, list[str]] | None = None  # horário do responsável pela conta
+
+
+@router.post("/onboarding/niche")
+async def setup_niche(body: NicheIn, admin: User = Depends(admin_only), s: AsyncSession = Depends(get_db)):
+    """Aplica o nicho: cria os setores das áreas escolhidas, define consulta paga e o horário de atendimento."""
+    from ..models import Tenant
+
+    bad = set(body.areas + body.consult_areas) - set(AREA_SLUGS)
+    if bad:
+        raise HTTPException(422, "área desconhecida: " + ", ".join(sorted(bad)))
+    if body.work_hours is not None:
+        for day, span in body.work_hours.items():
+            if day not in {str(i) for i in range(7)} or len(span) != 2 or not all(re.match(HHMM, x) for x in span) or span[0] >= span[1]:
+                raise HTTPException(422, "horário inválido")
+    existing = {d.slug: d for d in (await s.execute(select(Department).where(Department.tenant_id == admin.tenant_id))).scalars().all()}
+    for i, preset in enumerate(DEFAULT_DEPARTMENTS):
+        slug = preset["slug"]
+        wanted = preset.get("is_default") or slug in body.areas
+        d = existing.get(slug)
+        if d is None and not wanted:
+            continue
+        if d is None:
+            d = Department(tenant_id=admin.tenant_id, position=i, **{k: v for k, v in preset.items() if k not in ("needs_consult", "consult_price_cents")})
+            s.add(d)
+            await s.flush()
+        d.active = bool(wanted)
+        if not preset.get("is_default"):
+            d.needs_consult = slug in body.consult_areas
+            d.consult_price_cents = body.consult_price_cents if d.needs_consult else None
+        # quem assinou entra em todas as áreas: assim um advogado sozinho já recebe clientes e consultas
+        if wanted and not await s.get(DepartmentMember, (d.id, admin.id)):
+            s.add(DepartmentMember(department_id=d.id, user_id=admin.id, tenant_id=admin.tenant_id))
+    if body.work_hours is not None:
+        admin.work_hours = json.dumps(body.work_hours)
+    tenant = await s.get(Tenant, admin.tenant_id)
+    tenant.segment, tenant.onboarded = body.segment, True
+    await s.commit()
+    mm = await members_map(s, admin.tenant_id)
+    rows = (
+        await s.execute(select(Department).where(Department.tenant_id == admin.tenant_id, Department.active.is_(True)).order_by(Department.position))
+    ).scalars().all()
+    return {"segment": tenant.segment, "departments": [dept_out(d, mm.get(d.id, [])) for d in rows]}
+
+
+# ---------- plano personalizado ----------
+class CustomPlanIn(BaseModel):
+    name: str = Field(min_length=2, max_length=200)
+    company: str = Field(min_length=2, max_length=200)
+    phone: str = Field(min_length=8, max_length=32)
+    email: str | None = Field(default=None, max_length=200)
+    message: str | None = Field(default=None, max_length=2000)
+
+
+@router.post("/sales/custom-plan", status_code=201)
+async def custom_plan(body: CustomPlanIn, s: AsyncSession = Depends(get_db)):
+    """Recebe o interesse no plano personalizado. No futuro, redireciona para o atendimento comercial."""
+    from ..models import CustomPlanRequest
+
+    s.add(CustomPlanRequest(**body.model_dump()))
+    await s.commit()
+    return {"ok": True}

@@ -166,7 +166,8 @@ h2{font-size:clamp(32px,4.4vw,52px);max-width:19ch}
 .steps b{font-family:var(--display);font-size:20px;letter-spacing:-.015em;margin-top:8px}.steps span{color:var(--mute);font-size:15.5px}
 
 /* planos */
-.plans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;align-items:stretch}
+.plans{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;align-items:stretch}
+@media (max-width:1100px){.plans{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .plan{background:var(--surface);border:1px solid var(--line);border-radius:26px;padding:34px;display:flex;flex-direction:column;gap:20px;min-width:0}
 .plan h3{font-size:22px;letter-spacing:-.015em}
 .price{font-family:var(--display);font-size:54px;font-weight:800;letter-spacing:-.04em;line-height:1}.price small{font-family:var(--body);font-size:16px;font-weight:500;color:var(--mute);letter-spacing:0}
@@ -350,6 +351,9 @@ footer .brand{color:var(--ink);font-size:16px}
       <div class="plan"><h3>Business</h3><div class="price">R$ 1.197<small> /mês</small></div>
         <ul><li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-check"/></svg>1.500 atendimentos incluídos</li><li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-check"/></svg>15 atendentes</li><li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-check"/></svg>2 números de WhatsApp</li><li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-check"/></svg>Excedente: R$ 0,90 por atendimento</li></ul>
         <a class="btn" href="/app/?plan=business">Comprar plano</a></div>
+      <div class="plan"><h3>Personalizado</h3><div class="price" style="font-size:34px">Sob consulta</div>
+        <ul><li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-check"/></svg>Setores, pessoas e números sob medida</li><li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-check"/></svg>Ajustes da IA para a rotina do escritório</li><li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-check"/></svg>Integração com os sistemas que vocês já usam</li><li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-check"/></svg>Implantação acompanhada pela nossa equipe</li></ul>
+        <a class="btn" href="/app/?plan=custom">Falar com a equipe</a></div>
     </div>
     <p class="fine"><b>Versão de teste:</b> ao comprar um plano você entra no sistema e conecta um número de teste. Nenhuma cobrança é feita. Valores de lançamento, sujeitos a confirmação. As mensagens do WhatsApp cobradas pela Meta aparecem em linha separada na fatura, pelo custo da própria Meta.</p>
   </section>

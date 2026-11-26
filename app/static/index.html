@@ -41,6 +41,24 @@ label.f{display:grid;gap:5px;font-size:12.5px;color:var(--mute);font-weight:500}
 .muted{color:var(--mute)} .small{font-size:12.5px}
 .eyebrow{font-size:11px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:var(--mute)}
 
+#auth.full{grid-template-columns:minmax(240px,.5fr) 1.5fr}
+#auth .card.wide{width:min(1080px,100%)}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,215px),1fr));gap:12px}
+.pcard{position:relative;border:1px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:10px;background:var(--paper)}
+.pcard.pop{border:2px solid var(--ink)} .pcard.on{box-shadow:0 0 0 3px var(--soft)}
+.pcard h3{font-size:19px} .pprice{font-family:var(--display);font-size:28px;font-weight:800;letter-spacing:-.03em}
+.pprice small{font:500 13px var(--body);color:var(--mute)}
+.pcard ul{margin:0;padding-left:18px;display:grid;gap:5px;font-size:13.5px;flex:1}
+.pbadge{position:absolute;top:-11px;left:16px;background:var(--ink);color:var(--bg);font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;letter-spacing:.04em;text-transform:uppercase}
+.ssteps{margin:0;padding:0;list-style:none;display:grid;gap:10px;counter-reset:s}
+.ssteps li{counter-increment:s;display:flex;gap:10px;align-items:center;color:#7f90a5;font-size:14px}
+.ssteps li::before{content:counter(s);width:26px;height:26px;border-radius:50%;border:1px solid #33465e;display:grid;place-items:center;font-size:12px;flex:none}
+.ssteps li.now{color:#fff;font-weight:600} .ssteps li.now::before{background:#19c37d;border-color:#19c37d;color:#04231a}
+.ssteps li.done{color:#c9d4e2} .ssteps li.done::before{content:"✓";background:#1d3048;border-color:#1d3048;color:#19c37d}
+.pay{display:flex;justify-content:space-between;align-items:center;gap:12px;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.areas{display:grid;gap:8px}
+.area{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer}
+.area input{width:auto;margin-top:3px}
 /* login */
 #auth{min-height:100%;display:grid;grid-template-columns:1.1fr 1fr}
 #auth .side{background:var(--rail);color:#eef3f8;padding:56px clamp(24px,5vw,72px);display:flex;flex-direction:column;justify-content:space-between;gap:40px;
@@ -194,19 +212,9 @@ ol.guide{margin:0;padding-left:20px;display:grid;gap:6px}
       <h1>Cada cliente no setor certo, sem esperar.</h1>
       <p>O assistente entende o assunto, explica em palavras simples e entrega a conversa para quem cuida daquilo no escritório. Consultas são marcadas direto na agenda do advogado.</p>
     </div>
-    <p class="small" style="color:#7f90a5;margin:0">Feito para escritórios de advocacia.</p>
+    <div class="steps-side" id="stepsSide"></div>
   </div>
-  <div class="form"><div class="card">
-    <h2>Entrar no escritório</h2>
-    <div class="banner hide" id="planBanner"></div>
-    <label class="f">Nome do escritório (só para criar conta)<input id="company" autocomplete="organization"></label>
-    <label class="f">Seu nome (só para criar conta)<input id="name" autocomplete="name"></label>
-    <label class="f">E-mail<input id="email" type="email" autocomplete="email"></label>
-    <label class="f">Senha (mínimo 8 caracteres)<input id="password" type="password" autocomplete="current-password"></label>
-    <button class="primary" id="btnLogin">Entrar</button>
-    <button id="btnRegister">Criar conta do escritório</button>
-    <small id="autherr" style="color:var(--bad)"></small>
-  </div></div>
+  <div class="form"><div class="card" id="authCard"></div></div>
 </section>
 
 <div id="app">
@@ -317,22 +325,142 @@ const hhmm = iso => new Date(iso + (iso.endsWith('Z') || iso.includes('+') ? '' 
 const ago = iso => { const m = Math.round((Date.now() - new Date(iso + 'Z')) / 60000); return m < 1 ? 'agora' : m < 60 ? m + ' min' : m < 1440 ? Math.round(m / 60) + ' h' : Math.round(m / 1440) + ' d'; };
 const brl = c => c == null ? '' : (c / 100).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
 
-// ---------- entrada ----------
-const qp = new URLSearchParams(location.search).get('plan');
-const pendingPlan = qp && PLAN_INFO[qp] ? qp : null;
-if (pendingPlan) { $('planBanner').classList.remove('hide'); $('planBanner').innerHTML = `Plano escolhido: <b>${PLAN_INFO[pendingPlan][0]}</b> (${PLAN_INFO[pendingPlan][1]}). <b>Versão de teste, sem cobrança.</b> Crie a conta do escritório para continuar.`; }
-$('btnLogin').onclick = async () => { try { await enter(await api('/auth/login', { method:'POST', body:{ email:$('email').value, password:$('password').value } }), false); } catch (e) { $('autherr').textContent = e.message; } };
-$('btnRegister').onclick = async () => { try { await enter(await api('/auth/register', { method:'POST', body:{ company:$('company').value, name:$('name').value, email:$('email').value, password:$('password').value } }), true); } catch (e) { $('autherr').textContent = e.message; } };
-$('password').onkeydown = e => { if (e.key === 'Enter') $('btnLogin').click(); };
+// ---------- assinatura: plano -> conta -> pagamento -> nicho ----------
+const PLANS = [
+  { k:'starter', name:'Starter', price:'R$ 197', per:'/mês', who:'Advogado autônomo ou escritório começando.',
+    feats:['150 atendimentos por mês', '2 pessoas na equipe', '1 número de WhatsApp', 'IA que encaminha e explica em linguagem simples', 'Agenda de consultas', 'Excedente: R$ 1,50 por atendimento'] },
+  { k:'pro', name:'Pro', price:'R$ 497', per:'/mês', who:'Escritório com setores e equipe.', pop:true,
+    feats:['500 atendimentos por mês', '5 pessoas na equipe', '1 número de WhatsApp', 'Filas por setor e responsável direto', 'Google Agenda dos advogados', 'Excedente: R$ 1,20 por atendimento'] },
+  { k:'business', name:'Business', price:'R$ 1.197', per:'/mês', who:'Vários setores e muito volume.',
+    feats:['1.500 atendimentos por mês', '15 pessoas na equipe', '2 números de WhatsApp', 'Tudo do Pro', 'Excedente: R$ 0,90 por atendimento'] },
+  { k:'custom', name:'Personalizado', price:'Sob consulta', per:'', who:'Redes de escritórios ou necessidades específicas.',
+    feats:['Setores, pessoas e números sob medida', 'Ajustes da IA para a rotina do escritório', 'Integração com os sistemas que vocês já usam', 'Implantação acompanhada pela nossa equipe'] },
+];
+const qsPlan = new URLSearchParams(location.search).get('plan');
+const FLOW = { plan: PLANS.some(p => p.k === qsPlan) ? qsPlan : null, step: null };
+function sideSteps(active) {
+  const steps = ['Escolha do plano', 'Conta do escritório', 'Pagamento', 'Perguntas sobre o escritório', 'Conectar o WhatsApp'];
+  $('stepsSide').innerHTML = active == null ? '<p class="small" style="color:#7f90a5;margin:0">Feito para escritórios de advocacia.</p>'
+    : '<ol class="ssteps">' + steps.map((t, i) => `<li class="${i < active ? 'done' : i === active ? 'now' : ''}">${t}</li>`).join('') + '</ol>';
+}
+function showAuth(step) {
+  FLOW.step = step; $('auth').style.display = 'grid'; $('app').style.display = 'none';
+  $('auth').classList.toggle('full', step === 'plans'); const c = $('authCard'); c.classList.toggle('wide', step === 'plans');
+  if (step === 'plans') {
+    sideSteps(0);
+    c.innerHTML = `<div class="eyebrow">Passo 1 de 5</div><h2 style="font-size:30px">Escolha o plano do escritório</h2>
+      <p class="muted" style="margin:0">Todos incluem o assistente com IA, as filas por setor e a agenda de consultas. Você pode trocar de plano depois.</p>
+      <div class="pgrid">${PLANS.map(p => `<div class="pcard ${p.pop ? 'pop' : ''} ${FLOW.plan === p.k ? 'on' : ''}">${p.pop ? '<span class="pbadge">Mais escolhido</span>' : ''}
+        <h3>${p.name}</h3><div class="pprice">${p.price}<small>${p.per}</small></div><p class="small muted" style="margin:0">${p.who}</p>
+        <ul>${p.feats.map(f => `<li>${esc(f)}</li>`).join('')}</ul>
+        <button class="${p.k === 'custom' ? '' : 'primary'}" data-pick="${p.k}">${p.k === 'custom' ? 'Falar com a nossa equipe' : 'Escolher ' + p.name}</button></div>`).join('')}</div>
+      <p class="small muted" style="margin:0"><b>Versão de teste:</b> nenhuma cobrança é feita. As mensagens cobradas pela Meta aparecem em linha separada, pelo custo da própria Meta. Já tem conta? <a href="#" id="toLogin">Entrar</a></p>`;
+    c.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => { FLOW.plan = b.dataset.pick; showAuth(FLOW.plan === 'custom' ? 'custom' : 'account'); });
+  } else if (step === 'custom') {
+    sideSteps(0);
+    c.innerHTML = `<div class="eyebrow">Plano personalizado</div><h2>Vamos montar junto com você</h2>
+      <p class="muted" style="margin:0">Deixe o contato e conte o que o escritório precisa. Em breve este botão vai levar direto para o atendimento da nossa empresa.</p>
+      <label class="f">Seu nome<input id="cuName"></label><label class="f">Escritório<input id="cuCo"></label>
+      <div class="grid2"><label class="f">WhatsApp<input id="cuPhone" inputmode="tel"></label><label class="f">E-mail<input id="cuMail" type="email"></label></div>
+      <label class="f">O que vocês precisam?<textarea id="cuMsg" placeholder="Ex.: 3 unidades, 12 advogados, integração com o sistema de processos"></textarea></label>
+      <button class="primary" id="cuGo">Enviar</button><a href="#" id="toPlans" class="small">‹ Ver os planos</a>`;
+    $('cuGo').onclick = async () => {
+      try {
+        await api('/sales/custom-plan', { method:'POST', body:{ name:$('cuName').value, company:$('cuCo').value, phone:$('cuPhone').value, email:$('cuMail').value || null, message:$('cuMsg').value || null } });
+        c.innerHTML = `<h2>Recebemos o seu contato</h2><p class="muted" style="margin:0">A nossa equipe vai falar com você pelo WhatsApp informado.</p><a href="#" id="toPlans" class="small">‹ Ver os planos</a>`; bindLinks();
+      } catch (e) { toast(e.message); }
+    };
+  } else if (step === 'account') {
+    sideSteps(1); const p = PLANS.find(x => x.k === FLOW.plan);
+    c.innerHTML = `<div class="eyebrow">Passo 2 de 5</div><h2>Crie a conta do escritório</h2>
+      <div class="banner">Plano <b>${p.name}</b> · ${p.price}${p.per} <a href="#" id="toPlans" style="margin-left:6px">Trocar</a></div>
+      <label class="f">Nome do escritório<input id="company" autocomplete="organization"></label>
+      <label class="f">Seu nome<input id="name" autocomplete="name"></label>
+      <label class="f">E-mail<input id="email" type="email" autocomplete="email"></label>
+      <label class="f">Senha (mínimo 8 caracteres)<input id="password" type="password" autocomplete="new-password"></label>
+      <button class="primary" id="btnRegister">Criar conta e ir para o pagamento</button><small id="autherr" style="color:var(--bad)"></small>
+      <a href="#" id="toLogin" class="small">Já tenho conta</a>`;
+    $('btnRegister').onclick = async () => {
+      try {
+        const d = await api('/auth/register', { method:'POST', body:{ company:$('company').value, name:$('name').value, email:$('email').value, password:$('password').value } });
+        S.token = d.token; S.me = d.user; try { localStorage.setItem('tk', S.token); } catch {} showAuth('pay');
+      } catch (e) { $('autherr').textContent = e.message; }
+    };
+  } else if (step === 'pay') {
+    sideSteps(2); const p = PLANS.find(x => x.k === FLOW.plan && x.k !== 'custom') || PLANS[1];
+    c.innerHTML = `<div class="eyebrow">Passo 3 de 5</div><h2>Pagamento</h2>
+      <div class="pay"><div><b>Plano ${p.name}</b><br><span class="small muted">Cobrança mensal · cancele quando quiser</span></div><b style="font-size:22px">${p.price}<small class="muted" style="font-size:13px">${p.per}</small></b></div>
+      <div class="alert"><b>Pagamento de teste.</b> Nenhuma cobrança é feita e nenhum dado de cartão é pedido. O pagamento de verdade (cartão, Pix e boleto) entra quando ligarmos o meio de pagamento.</div>
+      <button class="go" id="payGo">Confirmar pagamento de teste</button>
+      <p class="small muted" style="margin:0">${PLANS.filter(x => x.k !== 'custom' && x.k !== p.k).map(x => `<a href="#" data-switch="${x.k}">Mudar para ${x.name} (${x.price}${x.per})</a>`).join(' · ')}</p>`;
+    c.querySelectorAll('[data-switch]').forEach(a => a.onclick = e => { e.preventDefault(); FLOW.plan = a.dataset.switch; showAuth('pay'); });
+    $('payGo').onclick = async () => {
+      try { await api('/billing/test-checkout', { method:'POST', body:{ plan: p.k } }); toast('Pagamento confirmado (teste)'); await enter({ token:S.token, user:S.me }); }
+      catch (e) { toast(e.message); }
+    };
+  } else {
+    sideSteps(null);
+    c.innerHTML = `<h2>Entrar no escritório</h2>
+      <label class="f">E-mail<input id="email" type="email" autocomplete="email"></label>
+      <label class="f">Senha<input id="password" type="password" autocomplete="current-password"></label>
+      <button class="primary" id="btnLogin">Entrar</button><small id="autherr" style="color:var(--bad)"></small>
+      <div class="banner">Ainda não é cliente? <a href="#" id="toPlans">Veja os planos e assine</a></div>`;
+    $('btnLogin').onclick = async () => {
+      try { await enter(await api('/auth/login', { method:'POST', body:{ email:$('email').value, password:$('password').value } })); }
+      catch (e) { $('autherr').textContent = e.message; }
+    };
+    $('password').onkeydown = e => { if (e.key === 'Enter') $('btnLogin').click(); };
+  }
+  bindLinks();
+}
+function bindLinks() {
+  if ($('toLogin')) $('toLogin').onclick = e => { e.preventDefault(); showAuth('login'); };
+  if ($('toPlans')) $('toPlans').onclick = e => { e.preventDefault(); showAuth('plans'); };
+}
 $('btnLogout').onclick = () => { try { localStorage.removeItem('tk'); } catch {} location.href = '/app/'; };
 
-async function enter(data, fresh) {
+async function enter(data) {
   S.token = data.token; S.me = data.user; try { localStorage.setItem('tk', S.token); } catch {}
-  if (fresh && pendingPlan) { try { await api('/billing/test-checkout', { method:'POST', body:{ plan: pendingPlan } }); } catch (e) { toast(e.message); } }
+  const ob = await api('/onboarding');
+  if (S.me.role === 'admin' && ob.subscription_status !== 'active') { FLOW.plan = FLOW.plan || ob.plan || 'pro'; showAuth('pay'); return; }
   $('auth').style.display = 'none'; $('app').style.display = 'grid';
   await refreshAll(); connectWS(); route();
-  if (S.me.role === 'admin' && (!S.ob.plan || !linkedChannels().length)) openWiz(!S.ob.plan ? 1 : 2);
+  if (S.me.role === 'admin' && !S.ob.onboarded) openNiche();
+  else if (S.me.role === 'admin' && !linkedChannels().length) openWiz(2);
 }
+
+// perguntas do nicho (passo 4)
+function openNiche() {
+  const areas = [['civel', 'Ações comuns (cível e consumidor)', 'bancos, compras, plano de saúde, cobranças, indenizações'], ['previdenciario', 'Previdenciário', 'INSS, aposentadoria, BPC/LOAS, auxílio-doença'], ['trabalhista', 'Trabalhista', 'demissão, rescisão, FGTS, horas extras'], ['familia', 'Família e sucessões', 'divórcio, pensão, guarda, inventário'], ['precatorios', 'Precatórios', 'compra, venda e antecipação de precatórios e RPV']];
+  modal(`<div class="eyebrow">Passo 4 de 5</div><h2>Conte sobre o seu negócio</h2>
+    <p class="muted" style="margin:0">Com estas respostas a plataforma monta os setores, as filas e o jeito como a IA atende.</p>
+    <label class="f">Qual é o tipo de empresa?</label>
+    <div class="seg"><button class="on" type="button">Escritório de advocacia</button><button disabled title="Em breve">Clínica (em breve)</button><button disabled title="Em breve">Imobiliária (em breve)</button></div>
+    <label class="f">Quais áreas o escritório atende? Cada área vira um setor com fila própria.</label>
+    <div class="areas">${areas.map(([k, n, d]) => `<label class="area"><input type="checkbox" data-area="${k}" checked><span><b>${n}</b><br><span class="small muted">${d}</span></span></label>`).join('')}</div>
+    <label class="f">Em quais áreas a análise do caso é feita em consulta paga? Nas outras, a IA resolve pelo chat e passa para a equipe.</label>
+    <div class="checks">${areas.map(([k, n]) => `<label><input type="checkbox" data-consult="${k}" ${['previdenciario', 'trabalhista', 'familia'].includes(k) ? 'checked' : ''}> ${n}</label>`).join('')}</div>
+    <div class="grid2"><label class="f">Valor da consulta (R$)<input id="nPrice" type="number" min="0" step="10" value="200"></label>
+      <label class="f">Horário de atendimento (seg. a sex.)<span style="display:flex;gap:6px"><input id="nH0" type="time" value="09:00"><input id="nH1" type="time" value="18:00"></span></label></div>
+    <div class="row-end"><button class="primary" id="nGo">Configurar meu escritório</button></div>`, true);
+  $('nGo').onclick = async () => {
+    const pick = sel => [...document.querySelectorAll(sel)].filter(x => x.checked);
+    const chosen = pick('[data-area]').map(x => x.dataset.area);
+    if (!chosen.length) { toast('Escolha pelo menos uma área'); return; }
+    const h = [$('nH0').value, $('nH1').value], wh = {}; for (let i = 0; i < 5; i++) wh[String(i)] = h;
+    const price = $('nPrice').value;
+    try {
+      const r = await api('/onboarding/niche', { method:'POST', body:{ segment:'advocacia', areas:chosen, consult_areas: pick('[data-consult]').map(x => x.dataset.consult).filter(k => chosen.includes(k)), consult_price_cents: price ? Math.round(parseFloat(price) * 100) : null, work_hours: wh } });
+      await refreshAll();
+      modal(`<div class="eyebrow">Escritório configurado</div><h2>Pronto. Veja o que foi montado</h2>
+        <div class="checks">${r.departments.map(d => `<span class="chip"><i style="background:${esc(d.color)}"></i>${esc(d.name)}${d.needs_consult ? ' · consulta ' + brl(d.consult_price_cents) : ''}</span>`).join('')}</div>
+        <p style="margin:0">Você já está em todos os setores, então recebe os clientes desde já. Depois, em <b>Equipe e setores</b>, adicione as pessoas do escritório e indique responsáveis diretos (como quem cuida de precatórios).</p>
+        <div class="row-end"><button class="primary" id="nNext">Passo 5: conectar o WhatsApp</button></div>`, true);
+      $('nNext').onclick = () => openWiz(2);
+    } catch (e) { toast(e.message); }
+  };
+}
+
 async function refreshAll() {
   const [ob, depts, team] = await Promise.all([api('/onboarding'), api('/departments'), api('/team')]);
   S.ob = ob; S.depts = depts; S.team = team; S.me = { ...S.me, ...(team.find(u => u.id === S.me.id) || {}) };
@@ -647,10 +775,10 @@ async function renderSettings() {
 $('btnWa').onclick = () => openWiz(2); $('btnPlan').onclick = () => openWiz(1);
 $('btnAuto').onclick = async () => { try { await api('/automation', { method:'PUT', body:{ enabled: !S.ob.automation_on } }); renderSettings(); } catch (e) { toast(e.message); } };
 
-function modal(html) { $('mbox').innerHTML = html; $('modal').classList.add('on'); $('mbox').querySelectorAll('[data-close]').forEach(b => b.onclick = closeModal); }
+function modal(html, sticky = false) { $('modal').dataset.sticky = sticky ? '1' : ''; $('mbox').innerHTML = html; $('modal').classList.add('on'); $('mbox').querySelectorAll('[data-close]').forEach(b => b.onclick = closeModal); }
 function closeModal() { $('modal').classList.remove('on'); stopQrPoll(); }
-$('modal').onclick = e => { if (e.target === $('modal')) closeModal(); };
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+$('modal').onclick = e => { if (e.target === $('modal') && !$('modal').dataset.sticky) closeModal(); };
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('modal').dataset.sticky) closeModal(); });
 
 let wizStep = 1, wizTab = 'test', qrTimer = null, qrChannelId = null;
 function stopQrPoll() { if (qrTimer) { clearInterval(qrTimer); qrTimer = null; } }
@@ -714,7 +842,9 @@ function showQr() {
   tick(); qrTimer = setInterval(tick, 2000);
 }
 
-try { const t = localStorage.getItem('tk'); if (t) { S.token = t; api('/me').then(u => enter({ token:t, user:u }, false)).catch(() => { S.token = null; }); } } catch {}
+let _tk = null; try { _tk = localStorage.getItem('tk'); } catch {}
+if (_tk && !FLOW.plan) { S.token = _tk; api('/me').then(u => enter({ token:_tk, user:u })).catch(() => { S.token = null; showAuth('login'); }); }
+else showAuth(FLOW.plan === 'custom' ? 'custom' : (FLOW.plan || location.hash === '#assinar') ? 'plans' : 'login');
 </script>
 </body>
 </html>

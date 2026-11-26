@@ -63,10 +63,7 @@ async def register(body: RegisterIn, s: AsyncSession = Depends(get_db)):
     except IntegrityError:
         await s.rollback()
         raise HTTPException(409, "e-mail já cadastrado")
-    from .office import ensure_default_departments
-
-    await ensure_default_departments(s, tenant.id)  # setores padrão de escritório de advocacia
-    await s.commit()
+    await s.commit()  # os setores são criados depois, nas perguntas do nicho (POST /onboarding/niche)
     return {"token": make_token(user.id, tenant.id), "user": user_out(user)}
 
 
@@ -159,6 +156,9 @@ async def onboarding(user: User = Depends(current_user), s: AsyncSession = Depen
     plan = PLANS.get(tenant.plan or "")
     return {
         "office_name": tenant.name,
+        "subscription_status": tenant.subscription_status,
+        "segment": tenant.segment,
+        "onboarded": bool(tenant.onboarded),
         "plan": tenant.plan,
         "plan_name": plan["name"] if plan else None,
         "number_limit": plan["numbers"] if plan else 1,
@@ -221,8 +221,9 @@ async def test_checkout(body: PlanIn, admin: User = Depends(admin_only), s: Asyn
     _require_mock()
     tenant = await s.get(Tenant, admin.tenant_id)
     tenant.plan = body.plan
+    tenant.subscription_status = "active"
     await s.commit()
-    return {"plan": tenant.plan, "plan_name": PLANS[tenant.plan]["name"], "charged": False}
+    return {"plan": tenant.plan, "plan_name": PLANS[tenant.plan]["name"], "charged": False, "subscription_status": "active"}
 
 
 @router.post("/channels/test-connect", status_code=201)

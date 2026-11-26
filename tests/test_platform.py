@@ -30,7 +30,7 @@ async def test_buy_plan_connect_whatsapp_and_take_customer(client):
     assert r.status_code == 409
 
     r = await client.post("/billing/test-checkout", headers=admin, json={"plan": "pro"})
-    assert r.json() == {"plan": "pro", "plan_name": "Pro", "charged": False}
+    assert r.json() == {"plan": "pro", "plan_name": "Pro", "charged": False, "subscription_status": "active"}
 
     r = await client.post("/channels/test-connect", headers=admin, json={"phone": "+55 (27) 99999-1234"})
     assert r.status_code == 201 and r.json()["display_phone"] == "+5527999991234"
