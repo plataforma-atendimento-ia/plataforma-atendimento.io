@@ -22,6 +22,9 @@ Formato: data · decisão · motivo.
 | 2026-11-24 | Cobrança "atendimento" = conversa resolvida pela IA OU atendida por humano, regra configurável | Alinhado ao pedido; auditável por atendimento |
 | 2026-11-24 | Funil kanban simples (sem automações complexas) no MVP | Pilar obrigatório, mas sem construtor visual |
 | 2026-11-24 | Sem cliente piloto ainda: Fase 5 depende de recrutar 3–5 betas | Registrar como risco de negócio |
+| 2026-11-26 | **Foco no nicho de advocacia** (substitui "produto horizontal"): setores com filas, responsável direto, consultas pagas só onde a análise exige, IA de triagem que explica em linguagem simples sem parecer (OAB), Google Agenda | Pedido do dono; concorrente cobra R$ 15 mil para personalizar por nicho |
+| 2026-11-26 | IA real = Claude pela biblioteca oficial (`claude-opus-5-5`, esforço baixo, structured outputs, cache do system prompt, fallback do servidor); sem chave, IA simulada por regras; falha da IA real cai na simulada | Funciona sem custo para testes; troca sem mexer no fluxo |
+| 2026-11-26 | Encaminhamento só com confiança >= 60%; abaixo disso, menu numerado | "Sem erro de setor": melhor perguntar do que errar |
 | 2026-11-25 | Número real do dono conecta pela **API oficial da Meta** (formulário no sistema, credenciais conferidas na Meta antes de salvar). QR Code/API não oficial descartado | Dono escolheu a opção oficial; evita banimento do número |
 | 2026-11-25 | **Revisão:** o dono pediu também a conexão por QR Code, sem Meta, ciente do risco de banimento. Implementada como **opção extra** (ponte Node.js com Baileys 7.0.0-rc14 em `bridge/`), ao lado da API oficial. Ponte só em 127.0.0.1 com segredo, sessões fora do OneDrive, limite de 20 envios/min | Dono decidiu; a opção oficial continua recomendada para uso profissional |
 | 2026-11-25 | Provedor de envio escolhido **por canal** (teste = simulado, real = Meta); simulador de cliente nunca escreve em número real | Evita misturar teste com produção |

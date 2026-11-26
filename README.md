@@ -20,7 +20,10 @@ No sistema (/app/), clique em **Criar conta da empresa**, depois em **Simular cl
 - Tempo real por WebSocket (nova mensagem, status, conversa assumida).
 - 14 testes automatizados (isolamento A×B, assumir atômico, outbox, retry, idempotência, webhook).
 
-## Número real e qualificação de leads (novo)
+## Nicho: escritórios de advocacia (novo)
+Setores com filas, assistente jurídico que encaminha e explica em linguagem simples, responsável direto por setor, consultas na agenda do advogado e Google Agenda. Visão geral e como testar: [docs/ADVOCACIA.md](docs/ADVOCACIA.md). Google Agenda: [docs/AGENDA_GOOGLE.md](docs/AGENDA_GOOGLE.md).
+
+## Número real e qualificação de leads
 - **Conectar o seu WhatsApp:** compre um plano no site, vá em *Meu número real (Meta)* e informe número, Phone number ID e token. O guia completo, com o túnel para testar em casa, está em [docs/NUMERO_REAL.md](docs/NUMERO_REAL.md). **Não foi testado contra a Meta de verdade ainda**: os testes automáticos simulam as respostas da Meta.
 - **Conectar por QR Code (não oficial):** lê um QR Code com o celular, sem conta Meta. **Viola os termos do WhatsApp e pode banir o número**; use um chip secundário. Funciona por uma ponte em Node.js (pasta `bridge/`, Baileys). Guia e limites em [docs/NUMERO_QR.md](docs/NUMERO_QR.md). O `.\run.ps1` já liga a ponte.
 - **Automação:** roteiro sem IA que pergunta nome, interesse, urgência e investimento e classifica o lead (quente, morno, frio). Botão *Automação* no topo liga e desliga.

@@ -158,6 +158,7 @@ async def onboarding(user: User = Depends(current_user), s: AsyncSession = Depen
     chans = (await s.execute(select(Channel).where(Channel.tenant_id == user.tenant_id))).scalars().all()
     plan = PLANS.get(tenant.plan or "")
     return {
+        "office_name": tenant.name,
         "plan": tenant.plan,
         "plan_name": plan["name"] if plan else None,
         "number_limit": plan["numbers"] if plan else 1,

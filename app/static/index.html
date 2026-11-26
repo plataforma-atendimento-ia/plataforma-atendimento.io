@@ -3,305 +3,718 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Atendimento</title>
+<title>Atendimento · Escritório</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap">
 <style>
-  :root { --bg:#f6f7f9; --card:#fff; --line:#e3e6ea; --ink:#1b1f24; --mute:#6b7480; --brand:#1f7a5c; --bad:#c0392b; --soft:#e4f3ec; --warn:#fbefd6; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#14171a; --card:#1d2227; --line:#2e353c; --ink:#e8ebee; --mute:#97a1ac; --brand:#3fb68b; --bad:#ec6b5e; --soft:#173128; --warn:#33270f; } }
-  * { box-sizing:border-box } body { margin:0; font:15px system-ui,sans-serif; background:var(--bg); color:var(--ink); }
-  button { font:inherit; cursor:pointer; border:1px solid var(--line); background:var(--card); color:var(--ink); padding:7px 12px; border-radius:8px }
-  button.primary { background:var(--brand); border-color:var(--brand); color:#fff }
-  button:disabled { opacity:.5; cursor:default }
-  input { font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); width:100% }
-  #auth { max-width:380px; margin:8vh auto; padding:24px; background:var(--card); border:1px solid var(--line); border-radius:12px; display:grid; gap:10px }
-  .banner { background:var(--soft); border-radius:8px; padding:10px 12px; font-size:14px }
-  #app { display:none; height:100vh; grid-template-columns:320px 1fr; grid-template-rows:auto 1fr }
-  header { grid-column:1/3; display:flex; justify-content:space-between; align-items:center; padding:10px 16px; background:var(--card); border-bottom:1px solid var(--line); gap:8px; flex-wrap:wrap }
-  aside { border-right:1px solid var(--line); overflow:auto; background:var(--card) }
-  .tabs { display:flex; gap:6px; padding:10px; flex-wrap:wrap } .tabs button.on { background:var(--brand); color:#fff; border-color:var(--brand) }
-  .conv { padding:10px 14px; border-top:1px solid var(--line); cursor:pointer } .conv:hover,.conv.sel { background:var(--bg) }
-  .conv b { display:block } .conv small { color:var(--mute) }
-  main { display:flex; flex-direction:column; min-height:0 }
-  #msgs { flex:1; overflow:auto; padding:16px; display:flex; flex-direction:column; gap:8px }
-  .m { max-width:70%; padding:8px 12px; border-radius:12px; background:var(--card); border:1px solid var(--line); align-self:flex-start; white-space:pre-wrap; overflow-wrap:anywhere }
-  .m.out { align-self:flex-end; background:var(--brand); color:#fff; border-color:var(--brand) }
-  .m.out.failed { background:var(--bad); border-color:var(--bad) }
-  .meta { font-size:12px; opacity:.85; margin-top:4px } .meta button { padding:2px 8px; font-size:12px; margin-left:6px }
-  #bar { display:flex; gap:8px; padding:12px; border-top:1px solid var(--line); background:var(--card) }
-  #leadbar { display:flex; gap:8px 14px; flex-wrap:wrap; align-items:center; padding:9px 16px; border-bottom:1px solid var(--line); background:var(--soft); font-size:13px }
-  .score { display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px; text-transform:uppercase; letter-spacing:.04em }
-  .score.quente { background:#fde2de; color:#b3372b } .score.morno { background:var(--warn); color:#9a5a05 } .score.frio { background:#dfe9f7; color:#2b59c3 }
-  .auto { font-size:11px; opacity:.85; margin-left:6px }
-  .secret { display:flex; gap:6px; align-items:center; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:6px 10px; font-size:13px; word-break:break-all }
-  .secret code { flex:1 } .secret button { padding:2px 8px; font-size:12px }
-  .alert { background:var(--warn); border-radius:8px; padding:10px 12px; font-size:13.5px }
-  #asCustomer { display:flex; gap:8px; padding:8px 12px; border-top:1px dashed var(--line); background:var(--warn); align-items:center; font-size:13px }
-  #asCustomer input { padding:5px 8px } #asCustomer span { white-space:nowrap }
-  #empty { margin:auto; color:var(--mute); padding:20px; text-align:center } .hide { display:none !important }
-  #toast { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:8px 14px; border-radius:8px; display:none; z-index:30 }
-  /* assistente de conexão */
-  #wiz { position:fixed; inset:0; background:rgba(10,14,13,.6); display:none; align-items:center; justify-content:center; padding:16px; z-index:20 }
-  #wizCard { background:var(--card); border:1px solid var(--line); border-radius:14px; width:min(640px,100%); max-height:92vh; overflow:auto; padding:24px; display:grid; gap:14px }
-  #wizCard h2 { margin:0; font-size:22px } #wizCard p { margin:0; color:var(--mute) }
-  .dots { display:flex; gap:6px; font-size:13px; color:var(--mute); flex-wrap:wrap } .dots b { color:var(--ink) }
-  .seg { display:flex; gap:6px } .seg button.on { background:var(--brand); color:#fff; border-color:var(--brand) }
-  ol.guide { margin:0; padding-left:20px; display:grid; gap:8px } ol.guide code { background:var(--bg); padding:1px 6px; border-radius:6px; font-size:13px }
-  .ok { background:var(--soft); border-radius:8px; padding:10px 12px }
-  .plans3 { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px }
-  .plans3 button { padding:14px; text-align:left; display:grid; gap:4px } .plans3 button.on { border-color:var(--brand); background:var(--soft) }
-  .row { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end }
-  @media (max-width:700px){ #app{grid-template-columns:1fr} aside{max-height:40vh} header{grid-column:1} }
+/* Identidade: tinta azul-marinho, papel branco e o verde do "entregue". Cada setor tem uma cor que aparece
+   como a lombada de uma pasta na lateral de cada atendimento. Layout: trilho | filas | lista | conversa | ficha. */
+:root{
+  --bg:#f2f4f7; --paper:#fff; --paper-2:#f6f8fa; --ink:#0d1b2a; --mute:#5b6878; --line:#e0e5ec;
+  --accent:#0a7a55; --accent-ink:#fff; --signal:#19c37d; --soft:#e1f3ea; --warn:#8f5300; --warn-soft:#fbefd6;
+  --bad:#b8392b; --bad-soft:#fbe4e0; --rail:#0d1b2a; --rail-ink:#c9d4e2; --rail-on:#1d3048;
+  --display:'Bricolage Grotesque',ui-sans-serif,system-ui,sans-serif; --body:'DM Sans',ui-sans-serif,system-ui,'Segoe UI',sans-serif;
+  --shadow:0 20px 50px -20px rgba(13,27,42,.35);
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0a121c; --paper:#111c2a; --paper-2:#152233; --ink:#e7eef6; --mute:#9aabbf; --line:#203149;
+  --accent:#34d399; --accent-ink:#052018; --signal:#34d399; --soft:#12352a; --warn:#f0b95c; --warn-soft:#33270f;
+  --bad:#f07a6c; --bad-soft:#3a1c18; --rail:#060c14; --rail-ink:#9fb0c4; --rail-on:#16263a; --shadow:0 20px 50px -20px rgba(0,0,0,.7); color-scheme:dark}}
+*{box-sizing:border-box} html,body{height:100%}
+body{margin:0;font:400 14.5px/1.5 var(--body);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--display);letter-spacing:-.02em;margin:0;line-height:1.15}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--paper);padding:7px 13px;border-radius:9px;transition:border-color .12s,background .12s}
+button:hover{border-color:var(--mute)} button:disabled{opacity:.45;cursor:default}
+button.primary{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:600}
+button.go{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+button.ghost{background:transparent;border-color:transparent} button.ghost:hover{background:var(--paper-2)}
+button.sm{padding:4px 9px;font-size:12.5px;border-radius:7px}
+input,select,textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--paper)}
+textarea{resize:vertical;min-height:70px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+label.f{display:grid;gap:5px;font-size:12.5px;color:var(--mute);font-weight:500}
+.hide{display:none!important}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;background:var(--paper-2);border:1px solid var(--line);white-space:nowrap}
+.chip i{width:8px;height:8px;border-radius:2px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.muted{color:var(--mute)} .small{font-size:12.5px}
+.eyebrow{font-size:11px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:var(--mute)}
+
+/* login */
+#auth{min-height:100%;display:grid;grid-template-columns:1.1fr 1fr}
+#auth .side{background:var(--rail);color:#eef3f8;padding:56px clamp(24px,5vw,72px);display:flex;flex-direction:column;justify-content:space-between;gap:40px;
+  background-image:radial-gradient(60% 50% at 20% 0%,rgba(25,195,125,.18),transparent 70%),radial-gradient(rgba(255,255,255,.06) 1px,transparent 1.4px);background-size:auto,22px 22px}
+#auth .side h1{font-size:clamp(30px,3.6vw,46px);max-width:16ch}
+#auth .side p{color:#a9b7c6;max-width:46ch;margin-top:16px;font-size:16px}
+#auth .form{display:grid;place-items:center;padding:32px 20px}
+#auth .card{width:min(400px,100%);display:grid;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:800;font-size:17px}
+.mark{width:32px;height:32px;border-radius:9px;background:#19263a;display:grid;place-items:center;flex:none}
+.banner{background:var(--soft);border-radius:10px;padding:10px 12px;font-size:13.5px}
+
+/* app */
+#app{display:none;height:100%;grid-template-columns:64px 250px minmax(0,1fr)}
+.rail{background:var(--rail);display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 0}
+.rail button{width:46px;height:46px;border-radius:12px;background:transparent;border:0;color:var(--rail-ink);display:grid;place-items:center;position:relative}
+.rail button svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.rail button.on,.rail button:hover{background:var(--rail-on);color:#fff}
+.rail button[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:54px;background:var(--ink);color:var(--bg);font-size:12px;padding:4px 8px;border-radius:6px;white-space:nowrap;z-index:5}
+.rail .sp{flex:1} .rail .mobile-only{display:none}
+.side2{background:var(--paper);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.side2 .head{padding:16px 16px 10px;border-bottom:1px solid var(--line)}
+.side2 .head h2{font-size:17px}
+.qlist{padding:10px 8px;overflow:auto;display:grid;gap:2px;align-content:start}
+.q{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;cursor:pointer;border:0;background:transparent;width:100%;text-align:left}
+.q:hover{background:var(--paper-2)} .q.on{background:var(--soft)}
+.q .n{margin-left:auto;font-size:12px;font-weight:700;min-width:22px;text-align:center;border-radius:999px;padding:1px 7px;background:var(--paper-2)}
+.q.on .n{background:var(--paper)}
+.q .sw{width:10px;height:22px;border-radius:3px;flex:none}
+.qsep{margin:12px 10px 4px}
+.me{margin-top:auto;padding:12px 14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.av{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font:700 12px var(--display);color:#fff;flex:none}
+.view{display:none;min-height:0;height:100%} .view.on{display:grid}
+
+/* atendimento */
+#v-atendimento{grid-template-columns:330px minmax(0,1fr) 300px}
+.list{border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;background:var(--paper)}
+.list .top{padding:14px 14px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line)}
+.list .top h3{font-size:16px}
+.rows{overflow:auto;flex:1}
+.row{display:grid;grid-template-columns:6px minmax(0,1fr);border-bottom:1px solid var(--line);cursor:pointer}
+.row .spine{background:var(--line)}
+.row .body{padding:11px 12px;display:grid;gap:3px;min-width:0}
+.row:hover{background:var(--paper-2)} .row.sel{background:var(--soft)}
+.row .l1{display:flex;align-items:center;gap:8px;min-width:0}
+.row .l1 b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .l1 time{margin-left:auto;font-size:11.5px;color:var(--mute);flex:none}
+.row .pv{color:var(--mute);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .l3{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-size:11px;font-weight:600;padding:1px 7px;border-radius:5px;background:var(--paper-2);color:var(--mute)}
+.tag.ia{background:var(--soft);color:var(--accent)} .tag.wait{background:var(--warn-soft);color:var(--warn)}
+.empty{margin:auto;text-align:center;color:var(--mute);padding:30px;max-width:340px}
+.empty h3{color:var(--ink);font-size:18px;margin-bottom:6px}
+.chat{display:flex;flex-direction:column;min-height:0;min-width:0;background:var(--bg)}
+.chead{padding:12px 18px;border-bottom:1px solid var(--line);background:var(--paper);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.chead .who{display:grid;gap:2px;min-width:0}
+.chead .who b{font-family:var(--display);font-size:17px}
+.chead .acts{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.route{margin:12px 18px 0;padding:9px 12px;border-radius:10px;background:var(--paper);border:1px solid var(--line);font-size:13px;display:flex;gap:8px;align-items:center}
+.route svg{width:16px;height:16px;stroke:var(--accent);fill:none;stroke-width:2;flex:none}
+.msgs{flex:1;overflow:auto;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.m{max-width:min(560px,78%);padding:9px 13px;border-radius:14px 14px 14px 4px;background:var(--paper);border:1px solid var(--line);align-self:flex-start;white-space:pre-wrap;overflow-wrap:anywhere}
+.m.out{align-self:flex-end;border-radius:14px 14px 4px 14px;background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.m.out.bot{background:var(--paper-2);color:var(--ink);border-color:var(--line);border-style:dashed}
+.m.failed{background:var(--bad-soft)!important;color:var(--bad)!important;border-color:var(--bad)!important}
+.m .meta{font-size:11.5px;opacity:.75;margin-top:4px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.daysep{align-self:center;font-size:11.5px;color:var(--mute);margin:6px 0}
+.comp{padding:12px 18px;background:var(--paper);border-top:1px solid var(--line);display:flex;gap:8px}
+.comp input{flex:1}
+.testbar{padding:8px 18px;background:var(--warn-soft);display:flex;gap:8px;align-items:center;font-size:12.5px}
+.testbar input{padding:6px 9px}
+.det{border-left:1px solid var(--line);background:var(--paper);overflow:auto;padding:18px;display:grid;gap:18px;align-content:start}
+.det section{display:grid;gap:8px}
+.kv{display:grid;grid-template-columns:92px 1fr;gap:4px 10px;font-size:13px}
+.kv span:nth-child(odd){color:var(--mute)} .kv span{min-width:0;overflow-wrap:anywhere}
+.det{overflow-x:hidden} .det .chip,.chead .chip{white-space:normal}
+.note{background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;white-space:pre-wrap}
+
+/* páginas: agenda, equipe, ajustes */
+.page{overflow:auto;padding:28px clamp(16px,3vw,40px);align-content:start;gap:22px}
+.page>header{display:flex;align-items:end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.page>header h1{font-size:28px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:14px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:18px;display:grid;gap:12px;align-content:start;min-width:0}
+.card.sector{border-left:6px solid var(--c,#999)}
+.card h3{font-size:17px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.checks{display:flex;flex-wrap:wrap;gap:6px}
+.checks label{display:flex;align-items:center;gap:6px;padding:4px 9px;border:1px solid var(--line);border-radius:8px;font-size:13px;cursor:pointer}
+.checks input{width:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.scroll{overflow-x:auto;background:var(--paper);border:1px solid var(--line);border-radius:16px}
+.day{display:grid;gap:8px}
+.day h3{font-size:14px;color:var(--mute);font-family:var(--body);font-weight:700;letter-spacing:0}
+.appt{display:grid;grid-template-columns:74px 6px minmax(0,1fr) auto;gap:12px;align-items:center;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.appt .t{font-family:var(--display);font-size:18px;font-weight:800}
+.appt .bar{align-self:stretch;border-radius:3px}
+.hours{display:grid;gap:6px}
+.hours .h{display:grid;grid-template-columns:110px 1fr 1fr;gap:8px;align-items:center}
+.hours .h label{display:flex;gap:6px;align-items:center;font-size:13px}
+.hours .h input[type=checkbox]{width:auto}
+.ok{background:var(--soft);border-radius:10px;padding:10px 12px;font-size:13.5px}
+.alert{background:var(--warn-soft);border-radius:10px;padding:10px 12px;font-size:13.5px}
+code{background:var(--paper-2);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:12.5px;word-break:break-all}
+
+/* janelas */
+.modal{position:fixed;inset:0;background:rgba(6,12,20,.55);display:none;place-items:center;padding:16px;z-index:40}
+.modal.on{display:grid}
+.modal .box{background:var(--paper);border:1px solid var(--line);border-radius:18px;width:min(620px,100%);max-height:92vh;overflow:auto;padding:22px;display:grid;gap:14px;box-shadow:var(--shadow)}
+.modal .box h2{font-size:21px}
+.row-end{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.seg{display:flex;gap:6px;flex-wrap:wrap} .seg button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.plans3{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.plans3 button{padding:14px;text-align:left;display:grid;gap:3px} .plans3 button.on{border-color:var(--accent);background:var(--soft)}
+.slots{display:grid;gap:6px}
+.slots button{text-align:left;display:flex;justify-content:space-between;gap:10px}
+.slots button.on{border-color:var(--accent);background:var(--soft)}
+ol.guide{margin:0;padding-left:20px;display:grid;gap:6px}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:10px;display:none;z-index:60;max-width:90vw}
+.back{display:none}
+
+@media (max-width:1280px){#v-atendimento{grid-template-columns:300px minmax(0,1fr)} .det{display:none} .det.force{display:grid;position:fixed;right:0;top:0;bottom:0;width:min(340px,92vw);z-index:30;box-shadow:var(--shadow)}}
+@media (max-width:900px){
+  #auth{grid-template-columns:1fr} #auth .side{padding:32px 20px}
+  #app{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) 60px}
+  .rail{grid-row:2;flex-direction:row;justify-content:space-around;padding:6px} .rail .sp,.rail .logo{display:none} .rail .mobile-only{display:grid}
+  .rail button[data-tip]:hover::after{display:none}
+  .side2{display:none} .side2.force{display:flex;position:fixed;inset:0 0 60px 0;z-index:25}
+  #v-atendimento{grid-template-columns:1fr} #v-atendimento.chatting .list{display:none} #v-atendimento:not(.chatting) .chat{display:none}
+  .back{display:inline-flex} .grid2{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-team" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><circle cx="17.5" cy="9" r="2.5"/><path d="M3 20c.5-3.6 3-5.6 6-5.6s5.5 2 6 5.6M16 14.6c2.6.1 4.4 1.8 5 4.4"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3.9a7 7 0 0 0-2-1.2L14.2 3h-4l-.4 2.6a7 7 0 0 0-2 1.2l-2.4-.9-2 3.4 2 1.5a7 7 0 0 0 0 2.4l-2 1.5 2 3.4 2.4-.9a7 7 0 0 0 2 1.2l.4 2.6h4l.4-2.6a7 7 0 0 0 2-1.2l2.3.9 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z"/></symbol>
+  <symbol id="i-queue" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></symbol>
+  <symbol id="i-route" viewBox="0 0 24 24"><path d="M5 12h11M12 6l6 6-6 6"/></symbol>
+</defs></svg>
+
 <section id="auth">
-  <h2 style="margin:0">Plataforma de Atendimento</h2>
-  <div class="banner hide" id="planBanner"></div>
-  <input id="company" placeholder="Nome da empresa (só para criar conta)">
-  <input id="name" placeholder="Seu nome (só para criar conta)">
-  <input id="email" type="email" placeholder="E-mail">
-  <input id="password" type="password" placeholder="Senha (mín. 8 caracteres)">
-  <button class="primary" onclick="login()">Entrar</button>
-  <button onclick="register()" id="regBtn">Criar conta da empresa</button>
-  <small id="autherr" style="color:var(--bad)"></small>
+  <div class="side">
+    <div class="brand"><span class="mark"><svg width="18" height="18" viewBox="0 0 32 32"><path d="M6 9.5A3.5 3.5 0 0 1 9.5 6h13A3.5 3.5 0 0 1 26 9.5v8a3.5 3.5 0 0 1-3.5 3.5H15l-5.5 4.6V21A3.5 3.5 0 0 1 6 17.5z" fill="#19c37d"/></svg></span>Plataforma de Atendimento IA</div>
+    <div>
+      <h1>Cada cliente no setor certo, sem esperar.</h1>
+      <p>O assistente entende o assunto, explica em palavras simples e entrega a conversa para quem cuida daquilo no escritório. Consultas são marcadas direto na agenda do advogado.</p>
+    </div>
+    <p class="small" style="color:#7f90a5;margin:0">Feito para escritórios de advocacia.</p>
+  </div>
+  <div class="form"><div class="card">
+    <h2>Entrar no escritório</h2>
+    <div class="banner hide" id="planBanner"></div>
+    <label class="f">Nome do escritório (só para criar conta)<input id="company" autocomplete="organization"></label>
+    <label class="f">Seu nome (só para criar conta)<input id="name" autocomplete="name"></label>
+    <label class="f">E-mail<input id="email" type="email" autocomplete="email"></label>
+    <label class="f">Senha (mínimo 8 caracteres)<input id="password" type="password" autocomplete="current-password"></label>
+    <button class="primary" id="btnLogin">Entrar</button>
+    <button id="btnRegister">Criar conta do escritório</button>
+    <small id="autherr" style="color:var(--bad)"></small>
+  </div></div>
 </section>
 
 <div id="app">
-  <header>
-    <strong id="who"></strong>
-    <span>
-      <button onclick="toggleAuto()" id="btnAuto" class="hide" title="Roteiro automático que qualifica os leads novos">Automação</button>
-      <button onclick="openWiz(2)" id="btnWa" title="Conectar ou ver os números de WhatsApp">WhatsApp</button>
-      <button onclick="simulate()" title="Simula um cliente escrevendo (modo teste)">Simular cliente</button>
-      <button onclick="logout()">Sair</button>
-    </span>
-  </header>
-  <aside>
-    <div class="tabs">
-      <button data-v="all" class="on">Abertas</button><button data-v="queue">Fila</button><button data-v="mine">Minhas</button><button data-v="closed">Encerradas</button>
-    </div>
-    <div id="list"></div>
+  <nav class="rail" aria-label="Seções">
+    <span class="mark logo" style="margin-bottom:10px"><svg width="18" height="18" viewBox="0 0 32 32"><path d="M6 9.5A3.5 3.5 0 0 1 9.5 6h13A3.5 3.5 0 0 1 26 9.5v8a3.5 3.5 0 0 1-3.5 3.5H15l-5.5 4.6V21A3.5 3.5 0 0 1 6 17.5z" fill="#19c37d"/></svg></span>
+    <button data-go="atendimento" data-tip="Atendimento" aria-label="Atendimento"><svg><use href="#i-chat"/></svg></button>
+    <button data-go="filas" data-tip="Filas" aria-label="Filas" class="mobile-only"><svg><use href="#i-queue"/></svg></button>
+    <button data-go="agenda" data-tip="Agenda" aria-label="Agenda"><svg><use href="#i-cal"/></svg></button>
+    <button data-go="equipe" data-tip="Equipe e setores" aria-label="Equipe e setores"><svg><use href="#i-team"/></svg></button>
+    <span class="sp"></span>
+    <button data-go="ajustes" data-tip="Ajustes" aria-label="Ajustes"><svg><use href="#i-gear"/></svg></button>
+  </nav>
+
+  <aside class="side2" id="side2">
+    <div class="head"><div class="eyebrow" id="officeName">Escritório</div><h2>Filas</h2></div>
+    <div class="qlist" id="qlist"></div>
+    <div class="me"><span class="av" id="meAv"></span><div style="min-width:0"><b id="meName" style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></b><span class="small muted" id="meRole"></span></div><button class="ghost sm" id="btnLogout" style="margin-left:auto">Sair</button></div>
   </aside>
-  <main>
-    <div id="empty">Selecione uma conversa</div>
-    <div id="chat" class="hide" style="display:flex;flex-direction:column;flex:1;min-height:0">
-      <div style="padding:10px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
-        <strong id="ctitle"></strong>
-        <span><button id="claimBtn" class="primary" onclick="claim()">Assumir</button> <button onclick="closeConv()">Encerrar</button></span>
+
+  <main style="min-height:0;min-width:0">
+    <!-- ATENDIMENTO -->
+    <section class="view" id="v-atendimento">
+      <div class="list">
+        <div class="top"><div><div class="eyebrow" id="listEyebrow">Fila</div><h3 id="listTitle">Meus atendimentos</h3></div>
+          <button class="sm" id="btnSim" title="Simula um cliente escrevendo no WhatsApp de teste">+ Cliente de teste</button></div>
+        <div class="rows" id="rows"></div>
       </div>
-      <div id="leadbar" class="hide"></div>
-      <div id="msgs"></div>
-      <div id="asCustomer"><span>Teste: responder como o cliente</span><input id="custText" placeholder="Mensagem do cliente..." onkeydown="if(event.key==='Enter')custSend()"><button onclick="custSend()">Enviar como cliente</button></div>
-      <div id="bar"><input id="text" placeholder="Digite a resposta..." onkeydown="if(event.key==='Enter')send()"><button class="primary" onclick="send()">Enviar</button></div>
-    </div>
+      <div class="chat" id="chat">
+        <div class="empty" id="chatEmpty"><h3>Escolha um atendimento</h3><p>Os clientes chegam pela IA, já no setor certo. Assuma um da fila do seu setor para conversar.</p></div>
+        <div id="chatOn" class="hide" style="display:flex;flex-direction:column;min-height:0;height:100%">
+          <div class="chead">
+            <button class="sm back" id="btnBack">‹ Voltar</button>
+            <span class="av" id="cAv"></span>
+            <div class="who"><b id="cName"></b><span class="small muted" id="cSub"></span></div>
+            <div class="acts">
+              <button class="go sm" id="btnClaim">Assumir</button>
+              <button class="sm" id="btnTransfer">Transferir</button>
+              <button class="sm" id="btnDetails">Ficha</button>
+              <button class="sm" id="btnClose">Encerrar</button>
+            </div>
+          </div>
+          <div class="route hide" id="cRoute"><svg><use href="#i-route"/></svg><span id="cRouteText"></span></div>
+          <div class="msgs" id="msgs"></div>
+          <div class="testbar hide" id="testbar"><span>Teste:</span><input id="custText" placeholder="Escrever como se fosse o cliente…"><button class="sm" id="btnCust">Enviar como cliente</button></div>
+          <div class="comp"><input id="text" placeholder="Escreva a resposta…" aria-label="Resposta"><button class="primary" id="btnSend">Enviar</button></div>
+        </div>
+      </div>
+      <aside class="det" id="det"><div class="empty small" style="padding:0">A ficha do cliente aparece aqui.</div></aside>
+    </section>
+
+    <!-- AGENDA -->
+    <section class="view page" id="v-agenda">
+      <header><div><div class="eyebrow">Consultas</div><h1>Agenda</h1></div><select id="agLawyer" style="width:auto"></select></header>
+      <div class="cards">
+        <div class="card" id="googleCard"></div>
+        <div class="card" id="hoursCard"></div>
+      </div>
+      <div id="agList" style="display:grid;gap:18px"></div>
+    </section>
+
+    <!-- EQUIPE -->
+    <section class="view page" id="v-equipe">
+      <header><div><div class="eyebrow">Escritório</div><h1>Equipe e setores</h1></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button id="btnDemo" class="hide">Criar equipe de exemplo</button><button class="primary" id="btnNewDept">Novo setor</button></div></header>
+      <p class="muted" style="margin:0;max-width:72ch">Cada setor tem a sua fila. A IA usa a descrição e as palavras de cada setor para encaminhar o cliente. Se o setor tem <b>responsável direto</b>, a conversa vai na hora para a fila pessoal dele. Palavras com <code>!</code> na frente definem o assunto e pesam mais.</p>
+      <div class="cards" id="deptCards"></div>
+      <div style="display:flex;justify-content:space-between;align-items:end;gap:10px;flex-wrap:wrap"><h2 style="font-size:20px">Pessoas</h2><button id="btnNewUser">Adicionar pessoa</button></div>
+      <div class="scroll"><table><thead><tr><th>Pessoa</th><th>Cargo</th><th>Setores</th><th>Agenda</th><th>Papel</th></tr></thead><tbody id="teamRows"></tbody></table></div>
+    </section>
+
+    <!-- AJUSTES -->
+    <section class="view page" id="v-ajustes">
+      <header><div><div class="eyebrow">Escritório</div><h1>Ajustes</h1></div></header>
+      <div class="cards">
+        <div class="card"><h3>WhatsApp</h3><div id="waList"></div><button class="primary" id="btnWa">Conectar ou ver números</button></div>
+        <div class="card"><h3>Assistente com IA</h3><p class="muted small" style="margin:0">Quando ligado, o assistente responde os clientes novos, explica dúvidas em linguagem simples, encaminha para o setor certo e oferece horário de consulta quando o caso exige.</p><div id="aiInfo" class="small"></div><button id="btnAuto"></button></div>
+        <div class="card"><h3>Plano</h3><div id="planInfo"></div><button id="btnPlan">Trocar plano</button></div>
+      </div>
+    </section>
   </main>
 </div>
 
-<div id="wiz"><div id="wizCard"></div></div>
-<div id="toast"></div>
+<div class="modal" id="modal"><div class="box" id="mbox"></div></div>
+<div id="toast" role="status"></div>
 
 <script>
-let token = null, me = null, view = 'all', convs = [], sel = null, ws = null, ob = null, wizStep = 1, wizTab = 'test', pendingPlan = null;
 const $ = id => document.getElementById(id);
-const STATUS = { queued:'na fila…', sending:'enviando…', sent:'✓ enviada', delivered:'✓✓ entregue', read:'✓✓ lida', failed:'✗ falhou', received:'' };
-const PLAN_INFO = { starter:['Starter','R$ 197/mês','1 número, 2 atendentes'], pro:['Pro','R$ 497/mês','1 número, 5 atendentes'], business:['Business','R$ 1.197/mês','2 números, 15 atendentes'] };
 const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const S = { token:null, me:null, ob:null, depts:[], team:[], queues:null, view:'mine', convs:[], sel:null, msgs:[], agenda:[], ws:null };
+const STATUS = { queued:'na fila', sending:'enviando…', sent:'✓ enviada', delivered:'✓✓ entregue', read:'✓✓ lida', failed:'falhou', received:'' };
+const PLAN_INFO = { starter:['Starter','R$ 197/mês','1 número, 2 pessoas'], pro:['Pro','R$ 497/mês','1 número, 5 pessoas'], business:['Business','R$ 1.197/mês','2 números, 15 pessoas'] };
+const WD = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
+const PALETTE = ['#0a7a55','#2b59c3','#b4540a','#7a3aa8','#9a6b00','#5b6b7f','#b8392b','#0f6e8c'];
 
 async function api(path, opts = {}) {
-  const r = await fetch(path, { ...opts, headers: { 'Content-Type':'application/json', ...(token ? { Authorization:'Bearer '+token } : {}) }, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  const r = await fetch(path, { ...opts, headers: { 'Content-Type':'application/json', ...(S.token ? { Authorization:'Bearer ' + S.token } : {}) }, body: opts.body ? JSON.stringify(opts.body) : undefined });
   const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Erro ' + r.status);
+  if (!r.ok) throw new Error(typeof data.detail === 'string' ? data.detail : (Array.isArray(data.detail) ? 'Confira os campos preenchidos' : 'Erro ' + r.status));
   return data;
 }
-function toast(t) { const e = $('toast'); e.textContent = t; e.style.display = 'block'; setTimeout(() => e.style.display = 'none', 3200); }
+function toast(t) { const e = $('toast'); e.textContent = t; e.style.display = 'block'; clearTimeout(e._t); e._t = setTimeout(() => e.style.display = 'none', 3400); }
+const initials = n => (n || '?').replace(/^(dr|dra)\.?\s+/i, '').split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase();
+const colorOf = id => PALETTE[[...(id || 'x')].reduce((a, c) => a + c.charCodeAt(0), 0) % PALETTE.length];
+const person = id => S.team.find(u => u.id === id);
+const pname = u => u ? ((u.title ? u.title + ' ' : '') + u.name) : '';
+const dept = id => S.depts.find(d => d.id === id);
+const hhmm = iso => new Date(iso + (iso.endsWith('Z') || iso.includes('+') ? '' : 'Z')).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+const ago = iso => { const m = Math.round((Date.now() - new Date(iso + 'Z')) / 60000); return m < 1 ? 'agora' : m < 60 ? m + ' min' : m < 1440 ? Math.round(m / 60) + ' h' : Math.round(m / 1440) + ' d'; };
+const brl = c => c == null ? '' : (c / 100).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
 
-// ---- plano escolhido no site (?plan=pro) ----
+// ---------- entrada ----------
 const qp = new URLSearchParams(location.search).get('plan');
-if (qp && PLAN_INFO[qp]) {
-  pendingPlan = qp;
-  $('planBanner').classList.remove('hide');
-  $('planBanner').innerHTML = `Plano escolhido: <b>${PLAN_INFO[qp][0]}</b> (${PLAN_INFO[qp][1]}). <b>Versão de teste: nenhuma cobrança.</b> Crie a conta da sua empresa para continuar.`;
+const pendingPlan = qp && PLAN_INFO[qp] ? qp : null;
+if (pendingPlan) { $('planBanner').classList.remove('hide'); $('planBanner').innerHTML = `Plano escolhido: <b>${PLAN_INFO[pendingPlan][0]}</b> (${PLAN_INFO[pendingPlan][1]}). <b>Versão de teste, sem cobrança.</b> Crie a conta do escritório para continuar.`; }
+$('btnLogin').onclick = async () => { try { await enter(await api('/auth/login', { method:'POST', body:{ email:$('email').value, password:$('password').value } }), false); } catch (e) { $('autherr').textContent = e.message; } };
+$('btnRegister').onclick = async () => { try { await enter(await api('/auth/register', { method:'POST', body:{ company:$('company').value, name:$('name').value, email:$('email').value, password:$('password').value } }), true); } catch (e) { $('autherr').textContent = e.message; } };
+$('password').onkeydown = e => { if (e.key === 'Enter') $('btnLogin').click(); };
+$('btnLogout').onclick = () => { try { localStorage.removeItem('tk'); } catch {} location.href = '/app/'; };
+
+async function enter(data, fresh) {
+  S.token = data.token; S.me = data.user; try { localStorage.setItem('tk', S.token); } catch {}
+  if (fresh && pendingPlan) { try { await api('/billing/test-checkout', { method:'POST', body:{ plan: pendingPlan } }); } catch (e) { toast(e.message); } }
+  $('auth').style.display = 'none'; $('app').style.display = 'grid';
+  await refreshAll(); connectWS(); route();
+  if (S.me.role === 'admin' && (!S.ob.plan || !linkedChannels().length)) openWiz(!S.ob.plan ? 1 : 2);
+}
+async function refreshAll() {
+  const [ob, depts, team] = await Promise.all([api('/onboarding'), api('/departments'), api('/team')]);
+  S.ob = ob; S.depts = depts; S.team = team; S.me = { ...S.me, ...(team.find(u => u.id === S.me.id) || {}) };
+  $('officeName').textContent = ob.office_name || 'Escritório';
+  $('meName').textContent = pname(S.me); $('meRole').textContent = S.me.role === 'admin' ? 'Administrador' : (S.me.position || 'Atendimento');
+  $('meAv').textContent = initials(S.me.name); $('meAv').style.background = colorOf(S.me.id);
+  await loadQueues();
+}
+const linkedChannels = () => (S.ob?.channels || []).filter(c => c.link_status !== 'pending');
+
+// ---------- navegação ----------
+document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => {
+  if (b.dataset.go === 'filas') { $('side2').classList.toggle('force'); return; }
+  location.hash = b.dataset.go;
+});
+window.addEventListener('hashchange', route);
+function route() {
+  const page = (location.hash.replace('#', '').split('?')[0]) || 'atendimento';
+  const valid = ['atendimento', 'agenda', 'equipe', 'ajustes'].includes(page) ? page : 'atendimento';
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + valid));
+  document.querySelectorAll('[data-go]').forEach(b => b.classList.toggle('on', b.dataset.go === valid));
+  $('side2').classList.remove('force');
+  if (location.hash.includes('google=ok')) toast('Google Agenda conectado');
+  if (location.hash.includes('google=erro')) toast('Não foi possível conectar o Google Agenda');
+  ({ atendimento: loadList, agenda: renderAgenda, equipe: renderTeam, ajustes: renderSettings })[valid]();
 }
 
-async function enter(data, justRegistered) {
-  token = data.token; me = data.user; try { localStorage.setItem('tk', token); } catch {}
-  $('auth').style.display = 'none'; $('app').style.display = 'grid'; $('who').textContent = me.name + ' · ' + me.role;
-  if (justRegistered && pendingPlan) { try { await api('/billing/test-checkout', { method:'POST', body:{ plan: pendingPlan } }); } catch (e) { toast(e.message); } }
-  await loadOnboarding(); await loadList(); connect();
-  if (!ob.plan || ob.channels.length === 0) openWiz(!ob.plan ? 1 : 2);
+// ---------- filas ----------
+async function loadQueues() {
+  S.queues = await api('/queues');
+  const q = S.queues, items = [];
+  items.push(qbtn('mine', 'Meus atendimentos', q.mine, null));
+  items.push(qbtn('triage', 'Em triagem pela IA', q.triage, null));
+  items.push(`<div class="eyebrow qsep">Setores</div>`);
+  q.sectors.forEach(s => items.push(qbtn('dept:' + s.id, s.name, s.waiting, s.color, s.owner_user_id ? 'direto com ' + (person(s.owner_user_id)?.name || '') : '')));
+  if (!q.sectors.length) items.push('<p class="small muted" style="padding:0 10px">Você ainda não está em nenhum setor. Peça ao administrador para incluir você em Equipe e setores.</p>');
+  items.push(`<div class="eyebrow qsep">Outras</div>`);
+  if (q.is_admin) items.push(qbtn('all', 'Todas abertas', null, null));
+  items.push(qbtn('closed', 'Encerradas', null, null));
+  $('qlist').innerHTML = items.join('');
+  $('qlist').querySelectorAll('[data-view]').forEach(b => b.onclick = () => { S.view = b.dataset.view; if (location.hash && !location.hash.startsWith('#atendimento')) location.hash = 'atendimento'; else loadList(); $('side2').classList.remove('force'); });
 }
-async function loadOnboarding() {
-  ob = await api('/onboarding'); if (!ob.test_mode) wizTab = 'real';
-  const n = ob.channels.filter(ch => ch.link_status !== 'pending').length;
-  $('btnWa').textContent = n ? 'WhatsApp ✓ ' + n : 'Conectar WhatsApp';
-  $('btnAuto').classList.toggle('hide', !ob.is_admin); $('btnAuto').textContent = 'Automação: ' + (ob.automation_on ? 'ligada' : 'desligada');
+function qbtn(view, label, n, color, sub = '') {
+  return `<button class="q ${S.view === view ? 'on' : ''}" data-view="${esc(view)}">${color ? `<span class="sw" style="background:${esc(color)}"></span>` : ''}<span style="min-width:0"><span style="display:block">${esc(label)}</span>${sub ? `<span class="small muted">${esc(sub)}</span>` : ''}</span>${n != null ? `<span class="n">${n}</span>` : ''}</button>`;
 }
-async function toggleAuto() { try { await api('/automation', { method:'PUT', body:{ enabled: !ob.automation_on } }); await loadOnboarding(); toast(ob.automation_on ? 'Automação ligada: clientes novos recebem as perguntas de qualificação' : 'Automação desligada'); } catch (e) { toast(e.message); } }
-async function login() { try { enter(await api('/auth/login', { method:'POST', body:{ email:$('email').value, password:$('password').value } }), false); } catch (e) { $('autherr').textContent = e.message; } }
-async function register() { try { enter(await api('/auth/register', { method:'POST', body:{ company:$('company').value, name:$('name').value, email:$('email').value, password:$('password').value } }), true); } catch (e) { $('autherr').textContent = e.message; } }
-function logout() { try { localStorage.removeItem('tk'); } catch {} location.href = '/app/'; }
+function viewTitle() {
+  if (S.view === 'mine') return ['Fila pessoal', 'Meus atendimentos'];
+  if (S.view === 'triage') return ['A IA está entendendo', 'Em triagem'];
+  if (S.view === 'all') return ['Administração', 'Todas abertas'];
+  if (S.view === 'closed') return ['Histórico', 'Encerradas'];
+  const d = dept(S.view.slice(5)); return ['Fila do setor', d ? d.name : 'Setor'];
+}
+async function loadList() {
+  if (!S.token) return;
+  const [eb, t] = viewTitle(); $('listEyebrow').textContent = eb; $('listTitle').textContent = t;
+  try { S.convs = await api('/conversations?view=' + encodeURIComponent(S.view)); } catch (e) { toast(e.message); S.convs = []; }
+  document.querySelectorAll('#qlist .q').forEach(b => b.classList.toggle('on', b.dataset.view === S.view));
+  $('btnSim').classList.toggle('hide', !(S.ob?.test_mode && (S.ob.channels || []).some(c => c.is_test)));
+  $('rows').innerHTML = S.convs.map(rowHtml).join('') || `<div class="empty"><h3>Nada por aqui</h3><p>${S.view === 'mine' ? 'Quando você assumir um atendimento, ele fica nesta lista.' : 'Nenhum cliente esperando nesta fila.'}</p></div>`;
+  $('rows').querySelectorAll('.row').forEach(r => r.onclick = () => openConv(r.dataset.id));
+}
+function rowHtml(c) {
+  const d = dept(c.department_id), owner = person(c.assigned_to);
+  const tags = [];
+  if (d) tags.push(`<span class="tag">${esc(d.name)}</span>`); else tags.push('<span class="tag ia">triagem IA</span>');
+  if (c.status === 'queue') tags.push(`<span class="tag wait">esperando ${ago(c.waiting_since || c.last_message_at)}</span>`);
+  if (owner) tags.push(`<span class="tag">${owner.id === S.me.id ? 'com você' : 'com ' + esc(owner.name.split(' ')[0])}</span>`);
+  if (c.routed_by === 'ia') tags.push('<span class="tag ia">IA encaminhou</span>');
+  return `<div class="row ${S.sel?.id === c.id ? 'sel' : ''}" data-id="${c.id}"><span class="spine" style="background:${d ? esc(d.color) : 'var(--line)'}"></span><div class="body"><div class="l1"><b>${esc(c.contact.name || c.contact.phone)}</b><time>${hhmm(c.last_message_at)}</time></div><div class="pv">${esc(c.last_preview)}</div><div class="l3">${tags.join('')}</div></div></div>`;
+}
 
-// ---- assistente: plano -> conectar WhatsApp -> pronto ----
-let qrTimer = null, qrChannelId = null;
+// ---------- conversa ----------
+async function openConv(id) {
+  S.sel = S.convs.find(c => c.id === id) || S.sel;
+  $('chatEmpty').classList.add('hide'); $('chatOn').classList.remove('hide'); $('v-atendimento').classList.add('chatting');
+  renderHead(); $('msgs').innerHTML = '';
+  S.msgs = await api(`/conversations/${id}/messages`); renderMsgs();
+  renderDetails(); document.querySelectorAll('.row').forEach(r => r.classList.toggle('sel', r.dataset.id === id));
+}
+$('btnBack').onclick = () => $('v-atendimento').classList.remove('chatting');
+function canTake(c) { return S.me.role === 'admin' || !c.department_id || (S.me.department_ids || []).includes(c.department_id); }
+function renderHead() {
+  const c = S.sel, d = dept(c.department_id), owner = person(c.assigned_to);
+  $('cName').textContent = c.contact.name || c.contact.phone;
+  $('cAv').textContent = initials(c.contact.name || '#'); $('cAv').style.background = d ? d.color : '#5b6b7f';
+  $('cSub').innerHTML = `${esc(c.contact.phone)} · ${d ? `<span class="chip"><i style="background:${esc(d.color)}"></i>${esc(d.name)}</span>` : 'em triagem pela IA'} ${owner ? '· com ' + esc(pname(owner)) : c.status === 'queue' ? '· na fila' : ''}`;
+  $('btnClaim').classList.toggle('hide', !(c.status === 'queue' && !c.assigned_to && canTake(c)));
+  const mineOrAdmin = c.assigned_to === S.me.id || S.me.role === 'admin';
+  $('btnTransfer').classList.toggle('hide', !mineOrAdmin || c.status === 'closed');
+  $('btnClose').classList.toggle('hide', !mineOrAdmin || c.status === 'closed');
+  $('cRoute').classList.toggle('hide', !c.route_note);
+  $('cRouteText').innerHTML = c.route_note ? `${c.routed_by === 'ia' ? '<b>Encaminhado pela IA</b> · ' : '<b>Transferido</b> · '}${esc(c.route_note)}` : '';
+  const canWrite = c.assigned_to === S.me.id && c.status === 'open';
+  $('text').disabled = $('btnSend').disabled = !canWrite;
+  $('text').placeholder = canWrite ? 'Escreva a resposta…' : c.status === 'queue' ? 'Assuma o atendimento para responder' : 'Somente quem assumiu pode responder';
+  const testCh = (S.ob?.channels || []).some(x => x.is_test) && S.ob?.test_mode;
+  $('testbar').classList.toggle('hide', !testCh);
+}
+function renderMsgs() {
+  let lastDay = '';
+  $('msgs').innerHTML = S.msgs.map(m => {
+    const day = new Date(m.created_at + 'Z').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'2-digit' });
+    const sep = day !== lastDay ? `<div class="daysep">${esc(day)}</div>` : ''; lastDay = day;
+    const bot = m.direction === 'out' && !m.sender_user_id, who = m.sender_user_id ? pname(person(m.sender_user_id)) : bot ? 'Assistente' : '';
+    const meta = m.direction === 'out' ? `<div class="meta">${esc(who)} · ${hhmm(m.created_at)} · ${STATUS[m.status] || esc(m.status)}${m.status === 'failed' ? ` — ${esc(m.error || '')} <button class="sm" data-resend="${m.id}">Reenviar</button>` : ''}</div>` : `<div class="meta">${hhmm(m.created_at)}</div>`;
+    return sep + `<div class="m ${m.direction === 'out' ? 'out' : ''} ${bot ? 'bot' : ''} ${m.status === 'failed' ? 'failed' : ''}" id="m${m.id}">${esc(m.body)}${meta}</div>`;
+  }).join('');
+  $('msgs').querySelectorAll('[data-resend]').forEach(b => b.onclick = async () => { try { await api(`/messages/${b.dataset.resend}/resend`, { method:'POST' }); } catch (e) { toast(e.message); } });
+  $('msgs').scrollTop = 1e9;
+}
+function upsertMsg(m) { const i = S.msgs.findIndex(x => x.id === m.id); if (i >= 0) S.msgs[i] = m; else S.msgs.push(m); renderMsgs(); }
+$('btnClaim').onclick = async () => { try { S.sel = await api(`/conversations/${S.sel.id}/claim`, { method:'POST' }); renderHead(); renderDetails(); await loadQueues(); loadList(); toast('Atendimento assumido. Ele está em "Meus atendimentos".'); } catch (e) { toast(e.message); loadList(); } };
+$('btnClose').onclick = async () => { try { S.sel = await api(`/conversations/${S.sel.id}/close`, { method:'POST' }); renderHead(); await loadQueues(); loadList(); } catch (e) { toast(e.message); } };
+$('btnDetails').onclick = () => $('det').classList.toggle('force');
+async function send() {
+  const t = $('text').value.trim(); if (!t || $('text').disabled) return; $('text').value = '';
+  try { upsertMsg(await api(`/conversations/${S.sel.id}/messages`, { method:'POST', body:{ body:t, client_id: crypto.randomUUID() } })); } catch (e) { toast(e.message); $('text').value = t; }
+}
+$('btnSend').onclick = send; $('text').onkeydown = e => { if (e.key === 'Enter') send(); };
+async function custSend() {
+  const t = $('custText').value.trim(); if (!t || !S.sel) return; $('custText').value = '';
+  try { await api('/dev/inbound', { method:'POST', body:{ phone:S.sel.contact.phone, name:S.sel.contact.name, text:t } }); } catch (e) { toast(e.message); }
+}
+$('btnCust').onclick = custSend; $('custText').onkeydown = e => { if (e.key === 'Enter') custSend(); };
+
+$('btnTransfer').onclick = () => {
+  const c = S.sel;
+  modal(`<h2>Transferir atendimento</h2>
+    <label class="f">Para a fila de um setor<select id="trDept"><option value="">— manter setor —</option>${S.depts.map(d => `<option value="${d.id}" ${d.id === c.department_id ? 'disabled' : ''}>${esc(d.name)}${d.owner_user_id ? ' (direto com ' + esc(person(d.owner_user_id)?.name || '') + ')' : ''}</option>`).join('')}</select></label>
+    <label class="f">Ou direto para uma pessoa<select id="trUser"><option value="">— ninguém (volta para a fila) —</option>${S.team.filter(u => u.id !== c.assigned_to).map(u => `<option value="${u.id}">${esc(pname(u))}</option>`).join('')}</select></label>
+    <div class="row-end"><button data-close>Cancelar</button><button class="primary" id="trGo">Transferir</button></div>`);
+  $('trGo').onclick = async () => {
+    try { S.sel = await api(`/conversations/${c.id}/transfer`, { method:'POST', body:{ department_id: $('trDept').value || null, user_id: $('trUser').value || null } }); closeModal(); renderHead(); await loadQueues(); loadList(); toast('Atendimento transferido'); } catch (e) { toast(e.message); }
+  };
+};
+
+async function renderDetails() {
+  const c = S.sel; if (!c) return;
+  const l = c.lead || {}, d = dept(c.department_id);
+  if (!S.agenda.length) { try { S.agenda = await api('/agenda?days=60'); } catch {} }
+  const appts = S.agenda.filter(a => a.conversation_id === c.id && a.status !== 'cancelada');
+  $('det').innerHTML = `
+    <section><div class="eyebrow">Cliente</div><h3 style="font-size:20px">${esc(c.contact.name || 'Sem nome')}</h3>
+      <div class="kv"><span>WhatsApp</span><span>${esc(c.contact.phone)}</span><span>Setor</span><span>${d ? `<span class="chip"><i style="background:${esc(d.color)}"></i>${esc(d.name)}</span>` : 'em triagem'}</span><span>Etapa</span><span>${esc(l.stage || 'novo')}</span><span>Responsável</span><span>${esc(pname(person(c.assigned_to))) || 'fila do setor'}</span></div></section>
+    <section><div class="eyebrow">O que o cliente contou (IA)</div><div class="note">${esc(l.summary || 'A IA ainda não registrou um resumo.')}</div>
+      <span class="small muted">Resumo automático para agilizar. Confira na conversa antes de orientar o cliente.</span></section>
+    <section><div class="eyebrow">Consulta</div>${appts.length ? appts.map(a => `<div class="ok"><b>${esc(a.label)}</b><br>com ${esc(a.lawyer_name)}${a.price_cents ? ' · ' + brl(a.price_cents) : ''}${a.in_google ? ' · no Google Agenda' : ''}</div>`).join('') : '<p class="small muted" style="margin:0">Nenhuma consulta marcada.</p>'}
+      ${c.status !== 'closed' ? '<button id="btnBook">Marcar consulta</button>' : ''}</section>`;
+  if ($('btnBook')) $('btnBook').onclick = bookModal;
+}
+async function bookModal() {
+  const c = S.sel, d = dept(c.department_id);
+  const lawyers = S.team.filter(u => !d || (u.department_ids || []).includes(d.id));
+  modal(`<h2>Marcar consulta</h2><p class="muted" style="margin:0">Horários livres na agenda do advogado${d && d.consult_price_cents ? ' · valor da consulta: ' + brl(d.consult_price_cents) : ''}.</p>
+    <label class="f">Advogado<select id="bkLawyer">${(lawyers.length ? lawyers : S.team).map(u => `<option value="${u.id}">${esc(pname(u))}</option>`).join('')}</select></label>
+    <div class="slots" id="bkSlots"><p class="muted">Carregando horários…</p></div>
+    <div class="row-end"><button data-close>Cancelar</button><button class="primary" id="bkGo" disabled>Marcar</button></div>`);
+  let chosen = null;
+  const load = async () => {
+    chosen = null; $('bkGo').disabled = true;
+    const slots = await api(`/lawyers/${$('bkLawyer').value}/slots?n=8`);
+    $('bkSlots').innerHTML = slots.map((sl, i) => `<button data-i="${i}"><span>${esc(sl.label)}</span><span class="muted">60 min</span></button>`).join('') || '<p class="muted">Sem horários livres nos próximos 14 dias.</p>';
+    $('bkSlots').querySelectorAll('button').forEach(b => b.onclick = () => { chosen = slots[b.dataset.i]; $('bkSlots').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); $('bkGo').disabled = false; });
+  };
+  $('bkLawyer').onchange = load; load();
+  $('bkGo').onclick = async () => {
+    try { await api('/appointments', { method:'POST', body:{ lawyer_id: chosen.lawyer_id, start: chosen.start, conversation_id: c.id } }); closeModal(); S.agenda = []; renderDetails(); toast('Consulta marcada: ' + chosen.label); } catch (e) { toast(e.message); }
+  };
+}
+
+$('btnSim').onclick = () => {
+  const ex = ['Oi, quero vender meu precatório', 'Quero me aposentar, trabalhei 30 anos de carteira assinada', 'O que é RPV?', 'Fui demitido e não recebi a rescisão', 'Quero me divorciar', 'Oi', 'O banco fez um empréstimo consignado que eu não pedi'];
+  modal(`<h2>Cliente de teste</h2><p class="muted" style="margin:0">Simula uma mensagem chegando no WhatsApp de teste. A IA responde e encaminha como faria de verdade.</p>
+    <label class="f">Nome<input id="simName" value="Cliente ${Math.floor(Math.random() * 900 + 100)}"></label>
+    <label class="f">Telefone<input id="simPhone" value="55279${Math.floor(Math.random() * 9e7 + 1e7)}"></label>
+    <label class="f">Mensagem<textarea id="simText">${esc(ex[Math.floor(Math.random() * ex.length)])}</textarea></label>
+    <div class="checks">${ex.map(t => `<label style="cursor:pointer" data-ex="${esc(t)}">${esc(t)}</label>`).join('')}</div>
+    <div class="row-end"><button data-close>Cancelar</button><button class="primary" id="simGo">Enviar mensagem</button></div>`);
+  $('mbox').querySelectorAll('[data-ex]').forEach(l => l.onclick = () => $('simText').value = l.dataset.ex);
+  $('simGo').onclick = async () => { try { await api('/dev/inbound', { method:'POST', body:{ phone:$('simPhone').value, name:$('simName').value, text:$('simText').value } }); closeModal(); toast('Mensagem recebida. Veja para onde a IA encaminhou.'); await loadQueues(); loadList(); } catch (e) { toast(e.message); } };
+};
+
+// ---------- tempo real ----------
+function connectWS() {
+  S.ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws?token=' + S.token);
+  S.ws.onmessage = ev => {
+    const e = JSON.parse(ev.data);
+    if (e.type.startsWith('conversation')) { if (S.sel && e.conversation.id === S.sel.id) { S.sel = e.conversation; renderHead(); renderDetails(); } loadQueues(); loadList(); }
+    if (e.type === 'message.new' || e.type === 'message.status') { if (S.sel && e.message.conversation_id === S.sel.id) upsertMsg(e.message); if (e.type === 'message.new') { loadQueues(); loadList(); } }
+  };
+  S.ws.onclose = () => { if (S.token) setTimeout(connectWS, 1500); };
+  setInterval(() => S.ws.readyState === 1 && S.ws.send('ping'), 25000);
+}
+
+// ---------- agenda ----------
+async function renderAgenda() {
+  const [st] = await Promise.all([api('/google/status')]);
+  S.agenda = await api('/agenda?days=30');
+  const g = $('googleCard');
+  g.innerHTML = `<h3>Google Agenda</h3>` + (st.connected
+    ? `<div class="ok">Conectado${st.email ? ' como <b>' + esc(st.email) + '</b>' : ''}. As consultas marcadas entram na sua agenda e os seus compromissos bloqueiam horários.</div><button id="gOff">Desconectar</button>`
+    : st.enabled ? `<p class="muted small" style="margin:0">Conecte a sua agenda para a IA só oferecer horários em que você está livre e para as consultas aparecerem nela.</p><button class="primary" id="gOn">Conectar meu Google Agenda</button>`
+    : `<div class="alert">O administrador ainda precisa configurar o acesso ao Google (credenciais OAuth). Endereço de retorno a cadastrar no Google: <code>${esc(st.redirect_uri)}</code>. Guia em docs/AGENDA_GOOGLE.md.</div><p class="small muted" style="margin:0">Enquanto isso, a agenda usa o seu horário de trabalho e as consultas marcadas aqui.</p>`);
+  if ($('gOn')) $('gOn').onclick = async () => { try { location.href = (await api('/google/connect')).url; } catch (e) { toast(e.message); } };
+  if ($('gOff')) $('gOff').onclick = async () => { await api('/google/disconnect', { method:'POST' }); renderAgenda(); };
+  renderHours();
+  const sel = $('agLawyer');
+  sel.innerHTML = `<option value="">Todos os advogados</option>` + S.team.map(u => `<option value="${u.id}">${esc(pname(u))}</option>`).join('');
+  sel.value = sel._v || ''; sel.onchange = () => { sel._v = sel.value; drawAgenda(); };
+  drawAgenda();
+}
+function drawAgenda() {
+  const who = $('agLawyer').value, items = S.agenda.filter(a => !who || a.lawyer_id === who);
+  const days = {};
+  items.forEach(a => { const k = new Date(a.starts_at + 'Z').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long' }); (days[k] = days[k] || []).push(a); });
+  $('agList').innerHTML = Object.entries(days).map(([k, list]) => `<div class="day"><h3>${esc(k)}</h3>${list.map(a => `
+    <div class="appt"><span class="t">${hhmm(a.starts_at)}</span><span class="bar" style="background:${a.department ? esc(a.department.color) : 'var(--line)'}"></span>
+      <div style="min-width:0"><b>${esc(a.contact?.name || a.contact?.phone || 'Consulta')}</b> <span class="muted small">com ${esc(a.lawyer_name)}${a.department ? ' · ' + esc(a.department.name) : ''}${a.price_cents ? ' · ' + brl(a.price_cents) : ''}</span><br>
+      <span class="small muted">${a.created_by === 'ia' ? 'marcada pela IA' : 'marcada pela equipe'}${a.in_google ? ' · no Google Agenda' : ''} · ${esc(a.status)}</span></div>
+      <span>${a.status === 'marcada' ? `<button class="sm" data-st="realizada" data-id="${a.id}">Realizada</button> <button class="sm" data-st="cancelada" data-id="${a.id}">Cancelar</button>` : ''}</span></div>`).join('')}</div>`).join('') || '<div class="card"><h3>Nenhuma consulta nos próximos 30 dias</h3><p class="muted" style="margin:0">Quando a IA ou a equipe marcar uma consulta, ela aparece aqui.</p></div>';
+  $('agList').querySelectorAll('[data-st]').forEach(b => b.onclick = async () => { await api(`/appointments/${b.dataset.id}`, { method:'PATCH', body:{ status:b.dataset.st } }); S.agenda = await api('/agenda?days=30'); drawAgenda(); });
+}
+function renderHours() {
+  const h = S.me.work_hours || {};
+  $('hoursCard').innerHTML = `<h3>Meu horário de atendimento</h3><p class="muted small" style="margin:0">A IA só oferece consultas dentro destes horários. Duração da consulta: ${S.me.slot_minutes || 60} min.</p>
+    <div class="hours">${WD.map((n, i) => { const v = h[String(i)]; return `<div class="h"><label><input type="checkbox" data-d="${i}" ${v ? 'checked' : ''}> ${n}</label><input type="time" data-a="${i}" value="${v ? v[0] : '09:00'}"><input type="time" data-b="${i}" value="${v ? v[1] : '18:00'}"></div>`; }).join('')}</div>
+    <button class="primary" id="saveHours">Salvar horário</button>`;
+  $('saveHours').onclick = async () => {
+    const wh = {}; for (let i = 0; i < 7; i++) if ($('hoursCard').querySelector(`[data-d="${i}"]`).checked) wh[String(i)] = [$('hoursCard').querySelector(`[data-a="${i}"]`).value, $('hoursCard').querySelector(`[data-b="${i}"]`).value];
+    try { await api(`/users/${S.me.id}`, { method:'PUT', body:{ work_hours: wh } }); await refreshAll(); toast('Horário salvo'); } catch (e) { toast(e.message); }
+  };
+}
+
+// ---------- equipe e setores ----------
+async function renderTeam() {
+  await refreshAll();
+  const admin = S.me.role === 'admin';
+  $('btnNewDept').classList.toggle('hide', !admin); $('btnNewUser').classList.toggle('hide', !admin);
+  $('btnDemo').classList.toggle('hide', !(admin && S.ob.test_mode));
+  $('deptCards').innerHTML = S.depts.map(d => `<div class="card sector" style="--c:${esc(d.color)}">
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:start"><div><h3>${esc(d.name)}</h3><span class="small muted">${d.member_ids.length} pessoa(s)${d.needs_consult ? ' · consulta paga ' + brl(d.consult_price_cents) : ' · atendimento pelo chat'}</span></div>${admin ? `<button class="sm" data-edit="${d.id}">Editar</button>` : ''}</div>
+    <p style="margin:0" class="small">${esc(d.description)}</p>
+    ${d.owner_user_id ? `<div class="ok small">Responsável direto: <b>${esc(pname(person(d.owner_user_id)))}</b>. As conversas vão direto para a fila dele.</div>` : ''}
+    <div class="checks">${d.member_ids.map(id => `<span class="chip">${esc(pname(person(id)))}</span>`).join('') || '<span class="small muted">Ninguém neste setor ainda.</span>'}</div></div>`).join('');
+  $('deptCards').querySelectorAll('[data-edit]').forEach(b => b.onclick = () => deptModal(S.depts.find(d => d.id === b.dataset.edit)));
+  $('teamRows').innerHTML = S.team.map(u => `<tr><td><div style="display:flex;gap:10px;align-items:center"><span class="av" style="background:${colorOf(u.id)}">${initials(u.name)}</span><div><b>${esc(pname(u))}</b><br><span class="small muted">${esc(u.email)}</span></div></div></td>
+    <td>${esc(u.position || '—')}</td><td><div class="checks">${(u.department_ids || []).map(id => dept(id)).filter(Boolean).map(d => `<span class="chip"><i style="background:${esc(d.color)}"></i>${esc(d.name)}</span>`).join('') || '—'}</div></td>
+    <td>${u.google_connected ? '<span class="chip"><i style="background:var(--signal)"></i>Google</span>' : '<span class="small muted">horário próprio</span>'}</td>
+    <td>${u.role === 'admin' ? 'Administrador' : 'Atendimento'} ${admin ? `<button class="sm" data-user="${u.id}">Editar</button>` : ''}</td></tr>`).join('');
+  $('teamRows').querySelectorAll('[data-user]').forEach(b => b.onclick = () => userModal(person(b.dataset.user)));
+}
+function deptModal(d) {
+  const isNew = !d; d = d || { name:'', color: PALETTE[S.depts.length % PALETTE.length], description:'', keywords:'', member_ids:[], owner_user_id:null, needs_consult:false, consult_price_cents:null };
+  modal(`<h2>${isNew ? 'Novo setor' : 'Editar setor'}</h2>
+    <div class="grid2"><label class="f">Nome<input id="dName" value="${esc(d.name)}"></label><label class="f">Cor<input id="dColor" type="color" value="${esc(d.color)}" style="height:40px;padding:4px"></label></div>
+    <label class="f">O que este setor atende (a IA lê isto)<textarea id="dDesc">${esc(d.description)}</textarea></label>
+    <label class="f">Palavras que os clientes usam, separadas por vírgula (use ! para as que definem o assunto)<textarea id="dKw">${esc(d.keywords)}</textarea></label>
+    <label class="f">Pessoas do setor</label><div class="checks">${S.team.map(u => `<label><input type="checkbox" data-mem="${u.id}" ${d.member_ids.includes(u.id) ? 'checked' : ''}> ${esc(pname(u))}</label>`).join('')}</div>
+    <label class="f">Responsável direto (opcional: as conversas vão direto para ele)<select id="dOwner"><option value="">— fila do setor —</option>${S.team.map(u => `<option value="${u.id}" ${u.id === d.owner_user_id ? 'selected' : ''}>${esc(pname(u))}</option>`).join('')}</select></label>
+    <div class="grid2"><label class="checks"><label><input type="checkbox" id="dConsult" ${d.needs_consult ? 'checked' : ''}> Análise exige consulta paga</label></label><label class="f">Valor da consulta (R$)<input id="dPrice" type="number" min="0" step="10" value="${d.consult_price_cents != null ? d.consult_price_cents / 100 : ''}"></label></div>
+    <div class="row-end">${!isNew && !d.is_default ? '<button id="dArch" style="margin-right:auto">Arquivar setor</button>' : ''}<button data-close>Cancelar</button><button class="primary" id="dSave">Salvar</button></div>`);
+  $('dSave').onclick = async () => {
+    const price = $('dPrice').value;
+    const body = { name:$('dName').value, color:$('dColor').value, description:$('dDesc').value, keywords:$('dKw').value,
+      member_ids:[...document.querySelectorAll('[data-mem]:checked')].map(x => x.dataset.mem), owner_user_id:$('dOwner').value || null,
+      needs_consult:$('dConsult').checked, consult_price_cents: price ? Math.round(parseFloat(price) * 100) : null };
+    try { await api(isNew ? '/departments' : `/departments/${d.id}`, { method: isNew ? 'POST' : 'PUT', body }); closeModal(); renderTeam(); toast('Setor salvo'); } catch (e) { toast(e.message); }
+  };
+  if ($('dArch')) $('dArch').onclick = async () => { try { await api(`/departments/${d.id}`, { method:'DELETE' }); closeModal(); renderTeam(); } catch (e) { toast(e.message); } };
+}
+$('btnNewDept').onclick = () => deptModal(null);
+function userModal(u) {
+  const isNew = !u; u = u || { name:'', title:'', position:'', role:'agent', department_ids:[] };
+  modal(`<h2>${isNew ? 'Adicionar pessoa' : 'Editar ' + esc(pname(u))}</h2>
+    <div class="grid2"><label class="f">Tratamento<select id="uTitle"><option value="">—</option>${['Dr.', 'Dra.'].map(t => `<option ${u.title === t ? 'selected' : ''}>${t}</option>`).join('')}</select></label><label class="f">Nome<input id="uName" value="${esc(u.name)}"></label></div>
+    <label class="f">Cargo<input id="uPos" value="${esc(u.position || '')}" placeholder="Ex.: Advogada previdenciária"></label>
+    ${isNew ? `<div class="grid2"><label class="f">E-mail<input id="uEmail" type="email"></label><label class="f">Senha inicial<input id="uPass" type="password" placeholder="mín. 8 caracteres"></label></div>` : ''}
+    <label class="f">Papel<select id="uRole"><option value="agent" ${u.role === 'agent' ? 'selected' : ''}>Atendimento (vê os seus setores)</option><option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Administrador (vê tudo e configura)</option></select></label>
+    <label class="f">Setores que atende</label><div class="checks">${S.depts.map(d => `<label><input type="checkbox" data-ud="${d.id}" ${(u.department_ids || []).includes(d.id) ? 'checked' : ''}> ${esc(d.name)}</label>`).join('')}</div>
+    <div class="row-end"><button data-close>Cancelar</button><button class="primary" id="uSave">Salvar</button></div>`);
+  $('uSave').onclick = async () => {
+    try {
+      let id = u.id;
+      if (isNew) id = (await api('/users', { method:'POST', body:{ name:$('uName').value, email:$('uEmail').value, password:$('uPass').value, role:$('uRole').value } })).id;
+      await api(`/users/${id}`, { method:'PUT', body:{ name:$('uName').value, title:$('uTitle').value || null, position:$('uPos').value || null, role:$('uRole').value, department_ids:[...document.querySelectorAll('[data-ud]:checked')].map(x => x.dataset.ud) } });
+      closeModal(); renderTeam(); toast('Pessoa salva');
+    } catch (e) { toast(e.message); }
+  };
+}
+$('btnNewUser').onclick = () => userModal(null);
+$('btnDemo').onclick = async () => {
+  try {
+    const r = await api('/demo/law-firm', { method:'POST' });
+    modal(`<h2>Equipe de exemplo criada</h2><p style="margin:0">Use estas contas para testar cada fila. Senha de todas: <code>${esc(r.password)}</code></p>
+      <div class="scroll"><table><thead><tr><th>Pessoa</th><th>E-mail</th></tr></thead><tbody>${r.users.map(u => `<tr><td>${esc(u.name)}</td><td><code>${esc(u.email)}</code></td></tr>`).join('')}</tbody></table></div>
+      <p class="small muted" style="margin:0">O Dr. Pedro é o responsável direto de Precatórios: esses clientes vão direto para a fila dele.</p>
+      <div class="row-end"><button class="primary" data-close>Entendi</button></div>`);
+    renderTeam();
+  } catch (e) { toast(e.message); }
+};
+
+// ---------- ajustes e conexão do WhatsApp ----------
+async function renderSettings() {
+  await refreshAll();
+  const ob = S.ob, admin = S.me.role === 'admin';
+  $('waList').innerHTML = linkedChannels().map(c => `<div class="ok">✓ <b>${esc(c.display_phone)}</b> ${c.is_test ? '(teste)' : c.via === 'qr' ? '(QR Code)' : '(API oficial)'}</div>`).join('') || '<p class="muted small" style="margin:0">Nenhum número conectado.</p>';
+  $('btnWa').classList.toggle('hide', !admin); $('btnPlan').classList.toggle('hide', !admin); $('btnAuto').classList.toggle('hide', !admin);
+  $('btnAuto').textContent = ob.automation_on ? 'Desligar assistente' : 'Ligar assistente';
+  $('aiInfo').innerHTML = (ob.automation_on ? '<span class="chip"><i style="background:var(--signal)"></i>Ligado</span>' : '<span class="chip">Desligado</span>');
+  $('planInfo').innerHTML = ob.plan ? `<b>${esc(ob.plan_name)}</b> · ${linkedChannels().length} de ${ob.number_limit} número(s)` : '<span class="muted">Nenhum plano escolhido.</span>';
+}
+$('btnWa').onclick = () => openWiz(2); $('btnPlan').onclick = () => openWiz(1);
+$('btnAuto').onclick = async () => { try { await api('/automation', { method:'PUT', body:{ enabled: !S.ob.automation_on } }); renderSettings(); } catch (e) { toast(e.message); } };
+
+function modal(html) { $('mbox').innerHTML = html; $('modal').classList.add('on'); $('mbox').querySelectorAll('[data-close]').forEach(b => b.onclick = closeModal); }
+function closeModal() { $('modal').classList.remove('on'); stopQrPoll(); }
+$('modal').onclick = e => { if (e.target === $('modal')) closeModal(); };
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+let wizStep = 1, wizTab = 'test', qrTimer = null, qrChannelId = null;
 function stopQrPoll() { if (qrTimer) { clearInterval(qrTimer); qrTimer = null; } }
-function renderQrTab(used, limit) {
-  const body = $('tabBody');
-  const pending = ob.channels.find(ch => ch.via === 'qr' && ch.link_status === 'pending');
-  const connected = ob.channels.filter(ch => ch.via === 'qr' && ch.link_status === 'connected');
-  body.innerHTML = '<div class="alert"><b>Risco real:</b> conectar por QR Code <b>viola os termos do WhatsApp</b> e pode levar ao <b>banimento permanente do número</b>. Use um chip secundário, não o número principal da empresa. Para uso profissional, prefira a API oficial.</div>' +
-    connected.map(ch => `<div class="ok">✓ Conectado por QR: <b>${esc(ch.display_phone)}</b> <button data-disc="${ch.id}">Desconectar</button></div>`).join('') +
-    (ob.bridge_up ? '' : '<div class="alert">A ponte do WhatsApp não está rodando. Abra o sistema com <code>.\\run.ps1</code> (ele liga a ponte) e recarregue esta página.</div>') +
-    ((used < limit || pending) && ob.bridge_up ? `<div id="qrBox"><button class="primary" id="qrBtn">${pending ? 'Gerar o QR Code de novo' : 'Gerar QR Code'}</button></div>` : (used >= limit ? '<p>Você já usou todos os números do plano.</p>' : '')) +
-    '<small>No celular: WhatsApp &gt; Configurações &gt; Dispositivos conectados &gt; Conectar dispositivo, e aponte a câmera para o QR Code. Passam a aparecer aqui as mensagens individuais recebidas; grupos e status ficam de fora. O QR é renovado sozinho.</small>';
-  body.querySelectorAll('[data-disc]').forEach(b => b.onclick = async () => { try { await api(`/channels/${b.dataset.disc}/disconnect`, { method:'POST' }); await loadOnboarding(); renderWiz(); toast('Desconectado'); } catch (e) { toast(e.message); } });
-  if ($('qrBtn')) $('qrBtn').onclick = startQr;
-  if (pending && ob.bridge_up) { qrChannelId = pending.id; showQr(); }
-}
-async function startQr() {
-  try { const ch = await api('/channels/qr/start', { method:'POST' }); qrChannelId = ch.id; await loadOnboarding(); showQr(); } catch (e) { toast(e.message); }
+function openWiz(step) { wizStep = step; if (!S.ob.test_mode && wizTab === 'test') wizTab = S.ob.qr_enabled ? 'qr' : 'real'; modal('<div id="wiz"></div>'); renderWiz(); }
+function dots() { return '<div class="small muted">' + ['1. Plano', '2. WhatsApp', '3. Pronto'].map((t, i) => i + 1 === wizStep ? `<b style="color:var(--ink)">${t}</b>` : t).join(' › ') + '</div>'; }
+async function renderWiz() {
+  stopQrPoll(); const ob = S.ob, w = $('wiz'); if (!w) return;
+  if (wizStep === 1) {
+    w.innerHTML = dots() + `<h2>Escolha o plano</h2><p class="muted" style="margin:0">Versão de teste: o plano libera os recursos, nenhuma cobrança é feita.</p>
+      <div class="plans3">${Object.entries(PLAN_INFO).map(([k, v]) => `<button data-plan="${k}" class="${ob.plan === k ? 'on' : ''}"><b>${v[0]}</b><span>${v[1]}</span><small class="muted">${v[2]}</small></button>`).join('')}</div>
+      <div class="row-end"><button data-close>Depois</button><button class="primary" id="wNext" ${ob.plan ? '' : 'disabled'}>Continuar</button></div>`;
+    w.querySelectorAll('[data-plan]').forEach(b => b.onclick = async () => { try { await api('/billing/test-checkout', { method:'POST', body:{ plan:b.dataset.plan } }); S.ob = await api('/onboarding'); renderWiz(); } catch (e) { toast(e.message); } });
+    $('wNext').onclick = () => { wizStep = linkedChannels().length ? 3 : 2; renderWiz(); };
+  } else if (wizStep === 2) {
+    const used = linkedChannels().length, limit = ob.number_limit;
+    w.innerHTML = dots() + `<h2>Conecte o WhatsApp do escritório</h2><p class="muted" style="margin:0">Plano <b>${esc(ob.plan_name || '—')}</b>: ${used} de ${limit} número(s).</p>
+      <div class="seg">${ob.test_mode ? `<button data-t="test" class="${wizTab === 'test' ? 'on' : ''}">Testar (número de mentira)</button>` : ''}${ob.qr_enabled ? `<button data-t="qr" class="${wizTab === 'qr' ? 'on' : ''}">QR Code (não oficial)</button>` : ''}<button data-t="real" class="${wizTab === 'real' ? 'on' : ''}">API oficial (Meta)</button></div>
+      <div id="tab" style="display:grid;gap:10px"></div>
+      <div class="row-end"><button data-close>Fechar</button>${used ? '<button class="primary" id="wNext">Continuar</button>' : ''}</div>`;
+    w.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { wizTab = b.dataset.t; renderWiz(); });
+    if ($('wNext')) $('wNext').onclick = () => { wizStep = 3; renderWiz(); };
+    const t = $('tab');
+    if (wizTab === 'test') {
+      t.innerHTML = `<div class="ok">Digite <b>qualquer número</b>. Ele é conectado de mentira, só para você experimentar o atendimento e a IA.</div>` + (used < limit ? `<input id="phone" placeholder="Ex.: 27 99999-1234" inputmode="tel"><button class="primary" id="connBtn">Conectar este número</button>` : '<p>Todos os números do plano já foram usados.</p>');
+      if ($('connBtn')) $('connBtn').onclick = async () => { try { await api('/channels/test-connect', { method:'POST', body:{ phone:$('phone').value } }); S.ob = await api('/onboarding'); wizStep = 3; renderWiz(); } catch (e) { toast(e.message); } };
+    } else if (wizTab === 'qr') {
+      const pending = ob.channels.find(c => c.via === 'qr' && c.link_status === 'pending');
+      t.innerHTML = `<div class="alert"><b>Risco real:</b> conectar por QR Code <b>viola os termos do WhatsApp</b> e pode levar ao banimento permanente do número. Use um chip secundário.</div>` +
+        (ob.bridge_up ? '' : '<div class="alert">A ponte do WhatsApp não está rodando. Abra o sistema com <code>.\\run.ps1</code>.</div>') +
+        ((used < limit || pending) && ob.bridge_up ? `<div id="qrBox"><button class="primary" id="qrBtn">${pending ? 'Gerar o QR Code de novo' : 'Gerar QR Code'}</button></div>` : '') +
+        '<small class="muted">No celular: WhatsApp › Configurações › Dispositivos conectados › Conectar dispositivo.</small>';
+      if ($('qrBtn')) $('qrBtn').onclick = async () => { try { const ch = await api('/channels/qr/start', { method:'POST' }); qrChannelId = ch.id; showQr(); } catch (e) { toast(e.message); } };
+      if (pending && ob.bridge_up) { qrChannelId = pending.id; showQr(); }
+    } else {
+      t.innerHTML = `<ol class="guide"><li>Crie um app tipo <b>Business</b> em developers.facebook.com e adicione o produto <b>WhatsApp</b>.</li><li>Anote o <b>Phone number ID</b> e gere um <b>token de acesso</b>.</li><li>No webhook, use o endereço e o token abaixo e assine <code>messages</code>.</li></ol>
+        <div class="small">Endereço do webhook: <code>${esc(location.origin + ob.webhook_path)}</code></div><div class="small">Token de verificação: <code>${esc(ob.verify_token || '')}</code></div>
+        ${/^(localhost|127\.)/.test(location.hostname) ? '<div class="alert">Este endereço só funciona no seu computador; a Meta precisa de um endereço público.</div>' : ''}
+        <input id="mPhone" placeholder="Número do escritório"><input id="mPnid" placeholder="Phone number ID"><input id="mTok" type="password" placeholder="Token de acesso"><button class="primary" id="mGo">Conectar e verificar</button>`;
+      $('mGo').onclick = async () => { try { await api('/channels/connect-meta', { method:'POST', body:{ phone:$('mPhone').value, phone_number_id:$('mPnid').value.trim(), access_token:$('mTok').value.trim() } }); S.ob = await api('/onboarding'); wizStep = 3; renderWiz(); } catch (e) { toast(e.message); } };
+    }
+  } else {
+    w.innerHTML = dots() + `<h2>Tudo pronto</h2>${linkedChannels().map(c => `<div class="ok">✓ <b>${esc(c.display_phone)}</b></div>`).join('')}
+      <p style="margin:0">Próximos passos: monte a equipe e os setores (ou crie a equipe de exemplo) e mande um cliente de teste para ver a IA encaminhar.</p>
+      <div class="row-end"><button data-close>Fechar</button><button class="primary" id="wTeam">Ir para Equipe e setores</button></div>`;
+    $('wTeam').onclick = () => { closeModal(); location.hash = 'equipe'; };
+  }
+  $('mbox').querySelectorAll('[data-close]').forEach(b => b.onclick = closeModal);
 }
 function showQr() {
   const box = $('qrBox'); if (!box) return;
-  box.innerHTML = '<p id="qrMsg">Iniciando a conexão com o WhatsApp…</p><img id="qrImg" alt="QR Code do WhatsApp" width="280" height="280" class="hide" style="background:#fff;border-radius:10px;padding:6px">';
+  box.innerHTML = '<p id="qrMsg" class="muted">Iniciando a conexão…</p><img id="qrImg" alt="QR Code do WhatsApp" width="260" height="260" class="hide" style="background:#fff;border-radius:12px;padding:8px">';
   stopQrPoll();
   const tick = async () => {
-    if ($('wiz').style.display === 'none' || !$('qrMsg')) { stopQrPoll(); return; }
+    if (!$('qrMsg')) { stopQrPoll(); return; }
     try {
       const st = await api(`/channels/${qrChannelId}/qr`);
-      if (st.status === 'connected') { stopQrPoll(); await loadOnboarding(); toast('WhatsApp conectado: ' + (st.phone || '')); wizStep = 3; renderWiz(); return; }
+      if (st.status === 'connected') { stopQrPoll(); S.ob = await api('/onboarding'); toast('WhatsApp conectado'); wizStep = 3; renderWiz(); return; }
       if (st.qr) { $('qrImg').src = st.qr; $('qrImg').classList.remove('hide'); $('qrMsg').textContent = 'Escaneie com o celular. O código é renovado sozinho.'; }
-      else if (st.status === 'none' || st.status === 'closed') { $('qrMsg').textContent = 'A sessão terminou. Clique em "Gerar QR Code" de novo.'; stopQrPoll(); await api('/channels/qr/start', { method:'POST' }).then(() => showQr()).catch(() => {}); }
     } catch (e) { $('qrMsg').textContent = e.message; stopQrPoll(); }
   };
   tick(); qrTimer = setInterval(tick, 2000);
 }
-function openWiz(step) { wizStep = step; $('wiz').style.display = 'flex'; renderWiz(); }
-function closeWiz() { stopQrPoll(); $('wiz').style.display = 'none'; loadList(); }
-const linked = () => ob.channels.filter(ch => ch.link_status !== 'pending');
-function dots() { const n = ['1. Plano', '2. Conectar WhatsApp', '3. Pronto']; return '<div class="dots">' + n.map((t, i) => i + 1 === wizStep ? `<b>${t}</b>` : t).join(' › ') + '</div>'; }
-function renderWiz() {
-  const c = $('wizCard');
-  if (wizStep === 1) {
-    c.innerHTML = dots() + `<h2>Escolha o plano</h2><p>Versão de teste: o plano só libera os recursos, <b>nenhuma cobrança é feita</b>.</p>
-      <div class="plans3">${Object.entries(PLAN_INFO).map(([k, v]) => `<button data-plan="${k}" class="${ob.plan === k ? 'on' : ''}"><b>${v[0]}</b><span>${v[1]}</span><small>${v[2]}</small></button>`).join('')}</div>
-      <div class="row"><button class="primary" id="wizNext" ${ob.plan ? '' : 'disabled'}>Continuar</button></div>`;
-    c.querySelectorAll('[data-plan]').forEach(b => b.onclick = async () => { try { await api('/billing/test-checkout', { method:'POST', body:{ plan:b.dataset.plan } }); await loadOnboarding(); renderWiz(); } catch (e) { toast(e.message); } });
-    $('wizNext').onclick = () => { wizStep = ob.channels.length ? 3 : 2; renderWiz(); };
-  } else if (wizStep === 2) {
-    const used = ob.channels.filter(ch => ch.link_status !== 'pending').length, limit = ob.number_limit;
-    c.innerHTML = dots() + `<h2>Conecte o seu WhatsApp</h2>
-      <p>Plano <b>${esc(ob.plan_name || '')}</b>: ${used} de ${limit} número(s) conectado(s).</p>
-      <div class="seg">${ob.test_mode ? `<button data-t="test" class="${wizTab === 'test' ? 'on' : ''}">Testar (número de mentira)</button>` : ''}${ob.qr_enabled ? `<button data-t="qr" class="${wizTab === 'qr' ? 'on' : ''}">QR Code (não oficial)</button>` : ''}<button data-t="real" class="${wizTab === 'real' ? 'on' : ''}">API oficial (Meta)</button></div>
-      <div id="tabBody"></div>
-      <div class="row">${used ? '<button class="primary" id="wizNext">Continuar</button>' : ''}</div>`;
-    c.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { wizTab = b.dataset.t; renderWiz(); });
-    if (wizTab === 'qr' && !ob.qr_enabled) wizTab = ob.test_mode ? 'test' : 'real';
-    stopQrPoll();
-    if (wizTab === 'qr') { renderQrTab(used, limit); }
-    else $('tabBody').innerHTML = wizTab === 'test' ? `
-      <div class="ok">Modo de teste: digite <b>qualquer número</b>. Ele é conectado de mentira (nada é enviado ao WhatsApp de verdade), só para você experimentar o atendimento.</div>
-      ${ob.channels.map(ch => `<div class="ok">✓ Conectado: <b>${esc(ch.display_phone)}</b></div>`).join('')}
-      ${used < limit ? '<input id="phone" placeholder="Ex.: 27 99999-1234" inputmode="tel"><button class="primary" id="connBtn">Conectar este número</button>' : '<p>Você já usou todos os números do plano.</p>'}` : `
-      <p>Os números reais usam a <b>API oficial da Meta</b> (não existe QR Code nela). Faça os passos 1 a 3 na Meta, depois preencha o formulário no fim.</p>
-      <ol class="guide">
-        <li>Crie uma conta em <b>developers.facebook.com</b> e um app do tipo <b>Business</b>. Adicione o produto <b>WhatsApp</b>.</li>
-        <li>Em <b>WhatsApp &gt; Configuração da API</b>, anote o <b>Phone number ID</b> e gere um <b>token de acesso</b> (para uso contínuo, crie um token de usuário do sistema).</li>
-        <li>Em <b>WhatsApp &gt; Configuração</b> (webhook), cole o endereço e o token de verificação abaixo e assine o campo <code>messages</code>.</li>
-        <li>O número precisa estar liberado para a API. Se ele é usado no aplicativo comum do celular, confira as regras da Meta antes (o aplicativo pode deixar de receber mensagens).</li>
-        <li>A Meta cobra por mensagem e exige uma forma de pagamento para uso real. Para testar, a Meta oferece um número de teste gratuito.</li>
-      </ol>
-      ${ob.is_admin ? `
-      <div class="alert ${/^(localhost|127\.|\[::1\])/.test(location.hostname) ? '' : 'hide'}">Atenção: este endereço (<b>${esc(location.host)}</b>) só funciona no seu computador. A Meta precisa de um endereço público para entregar as mensagens. Use um túnel (ex.: Cloudflare Tunnel) ou hospede o sistema, e abra o site por esse endereço.</div>
-      <div><small>Endereço do webhook</small><div class="secret"><code>${esc(location.origin + ob.webhook_path)}</code><button data-copy="${esc(location.origin + ob.webhook_path)}">Copiar</button></div></div>
-      <div><small>Token de verificação</small><div class="secret"><code>${esc(ob.verify_token)}</code><button data-copy="${esc(ob.verify_token)}">Copiar</button></div></div>
-      ${ob.verify_token === 'dev-verify' ? '<div class="alert">Este é o token padrão de desenvolvimento, público no código. Defina <code>WHATSAPP_VERIFY_TOKEN</code> no arquivo .env do servidor antes de usar um número real.</div>' : ''}
-      ${used < limit ? `<input id="mPhone" placeholder="Seu número de WhatsApp (ex.: 27 99999-1234)" inputmode="tel">
-      <input id="mPnid" placeholder="Phone number ID (só números)" inputmode="numeric" autocomplete="off">
-      <input id="mToken" type="password" placeholder="Token de acesso da Meta" autocomplete="off">
-      <button class="primary" id="metaBtn">Conectar e verificar com a Meta</button>
-      <small>O token é guardado no servidor e nunca volta para o navegador. Todas as mensagens recebidas neste número passam a aparecer na caixa de entrada daqui para frente (mensagens antigas não são importadas).</small>` : '<p>Você já usou todos os números do plano.</p>'}` : '<p>Somente o administrador pode conectar um número.</p>'}`;
-    c.querySelectorAll('[data-copy]').forEach(b => b.onclick = async () => { try { await navigator.clipboard.writeText(b.dataset.copy); toast('Copiado'); } catch { toast('Selecione e copie manualmente'); } });
-    if ($('metaBtn')) $('metaBtn').onclick = async () => {
-      $('metaBtn').disabled = true; $('metaBtn').textContent = 'Verificando com a Meta…';
-      try { const r = await api('/channels/connect-meta', { method:'POST', body:{ phone:$('mPhone').value, phone_number_id:$('mPnid').value.trim(), access_token:$('mToken').value.trim() } }); await loadOnboarding(); toast('Conectado: ' + r.display_phone + (r.verified_name ? ' (' + r.verified_name + ')' : '')); wizStep = 3; renderWiz(); }
-      catch (e) { toast(e.message); if ($('metaBtn')) { $('metaBtn').disabled = false; $('metaBtn').textContent = 'Conectar e verificar com a Meta'; } }
-    };
-    if ($('connBtn')) { $('connBtn').onclick = async () => { try { await api('/channels/test-connect', { method:'POST', body:{ phone:$('phone').value } }); await loadOnboarding(); toast('Número conectado (teste)'); wizStep = 3; renderWiz(); } catch (e) { toast(e.message); } }; $('phone').onkeydown = e => { if (e.key === 'Enter') $('connBtn').click(); }; }
-    if ($('wizNext')) $('wizNext').onclick = () => { wizStep = 3; renderWiz(); };
-  } else {
-    c.innerHTML = dots() + `<h2>WhatsApp conectado</h2>
-      ${linked().map(ch => `<div class="ok">✓ <b>${esc(ch.display_phone)}</b> ${ch.is_test ? '(teste)' : ch.via === 'qr' ? '(QR Code)' : '(API oficial)'}</div>`).join('')}
-      ${ob.channels.some(ch => !ch.is_test)
-        ? '<p>Seu número real está conectado. <b>Toda mensagem que chegar nele</b> aparece na fila daqui para frente. Clientes novos recebem as perguntas de qualificação (nome, interesse, urgência e investimento) e viram um lead quente, morno ou frio. Use <b>Assumir</b> para atender. Para testar, peça a alguém (ou use outro celular) para mandar uma mensagem para o seu número.</p>'
-        : '<p>Agora você já pode atender. Com a <b>automação ligada</b>, cada cliente novo recebe as perguntas de qualificação e vira um lead quente, morno ou frio. Crie clientes de exemplo, entre no atendimento e use <b>Assumir</b>. Dentro da conversa há um campo para responder como se fosse o cliente.</p>'}
-      <div class="row">${ob.test_mode && ob.channels.some(ch => ch.is_test) ? '<button id="mkDemo">Criar 3 clientes de exemplo</button>' : ''}<button class="primary" id="goApp">Ir para o atendimento</button></div>`;
-    if ($('mkDemo')) $('mkDemo').onclick = async () => {
-      const demo = [['5511987650001', 'Marina', 'Oi! Vocês entregam amanhã?'], ['5511987650002', 'Carlos', 'Quero saber o valor do plano Pro.'], ['5511987650003', 'Fernanda', 'Preciso falar com alguém sobre meu pedido.']];
-      try { for (const [phone, name, text] of demo) await api('/dev/inbound', { method:'POST', body:{ phone, name, text } }); toast('3 clientes chegaram na fila'); } catch (e) { toast(e.message); }
-    };
-    $('goApp').onclick = () => { view = 'queue'; document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.v === 'queue')); closeWiz(); };
-  }
-}
 
-// ---- atendimento ----
-function connect() {
-  ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws?token=' + token);
-  ws.onmessage = ev => {
-    const e = JSON.parse(ev.data);
-    if (e.type.startsWith('conversation')) { loadList(); if (sel && e.conversation.id === sel.id) { sel = e.conversation; renderHead(); } }
-    if (e.type === 'message.new' || e.type === 'message.status') { if (sel && e.message.conversation_id === sel.id) upsertMsg(e.message); if (e.type === 'message.new') loadList(); }
-  };
-  ws.onclose = () => { if (token) setTimeout(connect, 1500); };
-  setInterval(() => ws.readyState === 1 && ws.send('ping'), 25000);
-}
-document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { view = b.dataset.v; document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b)); loadList(); });
-
-async function loadList() {
-  convs = await api('/conversations?view=' + view);
-  $('list').innerHTML = convs.map(c => `<div class="conv ${sel && sel.id === c.id ? 'sel' : ''}" onclick="openConv('${c.id}')"><b>${esc(c.contact.name || c.contact.phone)} ${scoreTag(c.lead)}</b><small>${esc(c.last_preview)}</small><br><small>${c.status === 'queue' ? 'aguardando desde ' + new Date(c.waiting_since).toLocaleTimeString() : c.assigned_to === me.id ? 'com você' : 'em atendimento'}</small></div>`).join('') || '<p style="padding:14px;color:var(--mute)">Nenhuma conversa nesta aba.</p>';
-}
-async function openConv(id) {
-  sel = convs.find(c => c.id === id); $('empty').classList.add('hide'); $('chat').classList.remove('hide');
-  renderHead(); $('msgs').innerHTML = '';
-  (await api(`/conversations/${id}/messages`)).forEach(upsertMsg); loadList();
-}
-const URG = { hoje:'hoje', semana:'esta semana', sem_pressa:'sem pressa' }, BUD = { ate_500:'até R$ 500', '500_2000':'R$ 500 a R$ 2.000', acima_2000:'acima de R$ 2.000' };
-function scoreTag(l) { return l && l.score ? `<span class="score ${l.score}">${l.score}</span>` : (l && l.step && l.step !== 'done' ? '<span class="score frio">qualificando</span>' : ''); }
-function renderHead() {
-  $('ctitle').textContent = (sel.contact.name || '') + ' · ' + sel.contact.phone;
-  $('claimBtn').classList.toggle('hide', sel.assigned_to !== null || sel.status === 'closed');
-  const l = sel.lead, bar = $('leadbar');
-  if (!l) { bar.classList.add('hide'); return; }
-  bar.classList.remove('hide');
-  bar.innerHTML = `<b>Ficha do lead</b> ${scoreTag(l)}` +
-    (l.name ? `<span>Nome: <b>${esc(l.name)}</b></span>` : '') + (l.interest ? `<span>Interesse: <b>${esc(l.interest)}</b></span>` : '') +
-    (l.urgency ? `<span>Urgência: <b>${URG[l.urgency]}</b></span>` : '') + (l.budget ? `<span>Investimento: <b>${BUD[l.budget]}</b></span>` : '') +
-    `<span>Etapa: <b>${esc(l.stage)}</b></span>`;
-}
-function upsertMsg(m) {
-  let el = document.getElementById('m' + m.id);
-  if (!el) { el = document.createElement('div'); el.id = 'm' + m.id; $('msgs').appendChild(el); }
-  el.className = 'm ' + (m.direction === 'out' ? 'out' : '') + (m.status === 'failed' ? ' failed' : '');
-  el.innerHTML = esc(m.body) + (m.direction === 'out' ? `<div class="meta">${m.sender_user_id ? '' : '🤖 automático · '}${STATUS[m.status] || m.status}${m.status === 'failed' ? ` — ${esc(m.error || '')} <button onclick="resend('${m.id}')">Reenviar</button>` : ''}${m.attempts > 1 && m.status !== 'failed' ? ` (tentativa ${m.attempts})` : ''}</div>` : '');
-  $('msgs').scrollTop = 1e9;
-}
-async function claim() { try { sel = await api(`/conversations/${sel.id}/claim`, { method:'POST' }); renderHead(); loadList(); } catch (e) { toast(e.message); loadList(); } }
-async function closeConv() { try { await api(`/conversations/${sel.id}/close`, { method:'POST' }); loadList(); } catch (e) { toast(e.message); } }
-async function send() {
-  const t = $('text').value.trim(); if (!t) return; $('text').value = '';
-  try { upsertMsg(await api(`/conversations/${sel.id}/messages`, { method:'POST', body:{ body:t, client_id: crypto.randomUUID() } })); } catch (e) { toast(e.message); $('text').value = t; }
-}
-async function custSend() {
-  const t = $('custText').value.trim(); if (!t || !sel) return; $('custText').value = '';
-  try { await api('/dev/inbound', { method:'POST', body:{ phone: sel.contact.phone, name: sel.contact.name, text: t } }); } catch (e) { toast(e.message); }
-}
-async function resend(id) { try { upsertMsg(await api(`/messages/${id}/resend`, { method:'POST' })); } catch (e) { toast(e.message); } }
-async function simulate() {
-  if (!ob || !ob.channels.length) { openWiz(2); return; }
-  const phone = prompt('Telefone do cliente simulado', '5511999990000'); if (!phone) return;
-  const text = prompt('Mensagem do cliente', 'Olá, gostaria de informações'); if (!text) return;
-  try { await api('/dev/inbound', { method:'POST', body:{ phone, name:'Cliente ' + phone.slice(-4), text } }); } catch (e) { toast(e.message); }
-}
-try { const t = localStorage.getItem('tk'); if (t) { token = t; api('/me').then(u => enter({ token: t, user: u }, false)).catch(() => { token = null; }); } } catch {}
+try { const t = localStorage.getItem('tk'); if (t) { S.token = t; api('/me').then(u => enter({ token:t, user:u }, false)).catch(() => { S.token = null; }); } } catch {}
 </script>
 </body>
 </html>

@@ -66,7 +66,7 @@ async def _publish_conv(s: AsyncSession, c: Conversation, kind: str = "conversat
 async def list_conversations(
     view: str = "all", user: User = Depends(current_user), s: AsyncSession = Depends(get_db)
 ):
-    """view: all (abertas que posso ver) | queue (fila geral dos meus setores) | mine (assumidas por mim)
+    """view: all (abertas que posso ver) | queue (fila geral dos meus setores) | mine (assumidas por mim) | triage
     | dept:<id> (fila de um setor) | closed (encerradas)."""
     depts = await my_departments(s, user)
     q = (
@@ -83,6 +83,8 @@ async def list_conversations(
         if depts is not None and dept_id not in depts:
             raise HTTPException(403, "você não atende este setor")
         q = q.where(Conversation.department_id == dept_id, Conversation.status == "queue")
+    elif view == "triage":  # a IA ainda está entendendo o assunto (sem setor)
+        q = q.where(Conversation.department_id.is_(None), Conversation.status != "closed")
     elif view == "queue":
         q = _visible(q.where(Conversation.status == "queue"), user, depts)
     elif view == "closed":
