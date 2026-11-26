@@ -89,3 +89,20 @@ async def test_old_accounts_can_still_log_in(client):
     # a regra vale para senhas novas; o login não recusa contas antigas
     assert (await client.post("/auth/register", json=BASE)).status_code == 201
     assert (await client.post("/auth/login", json={"email": BASE["email"], "password": BASE["password"]})).status_code == 200
+
+
+async def test_survey_sets_consult_length_and_greeting_used_by_the_ai(client):
+    from app.channels import provider
+    from app.outbox import process_batch
+
+    admin = await register(client, "Moraes Advocacia", automation=True)
+    hello = "Bom dia! Você está falando com o Moraes Advocacia. Conte o que aconteceu."
+    r = await client.post("/onboarding/niche", headers=admin, json={**LAW, "slot_minutes": 45, "greeting": hello})
+    assert r.json()["greeting"] == hello
+    me = (await client.get("/me", headers=admin)).json()
+    team = {u["id"]: u for u in (await client.get("/team", headers=admin)).json()}
+    assert team[me["id"]]["slot_minutes"] == 45
+    await client.post("/channels/test-connect", headers=admin, json={"phone": "5527900000001"})
+    await client.post("/dev/inbound", headers=admin, json={"phone": "5511911110000", "text": "Oi", "name": "Cli"})
+    await process_batch(provider)
+    assert provider.sent[0]["body"] == hello  # a primeira mensagem ao cliente é a do escritório

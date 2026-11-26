@@ -175,6 +175,7 @@ async def onboarding(user: User = Depends(current_user), s: AsyncSession = Depen
         "subscription_status": tenant.subscription_status,
         "segment": tenant.segment,
         "onboarded": bool(tenant.onboarded),
+        "greeting": tenant.greeting,
         "plan": tenant.plan,
         "plan_name": plan["name"] if plan else None,
         "number_limit": plan["numbers"] if plan else 1,

@@ -370,6 +370,8 @@ class NicheIn(BaseModel):
     consult_areas: list[str] = Field(default_factory=list)  # áreas em que a análise exige consulta paga
     consult_price_cents: int | None = Field(default=None, ge=0, le=10_000_000)
     work_hours: dict[str, list[str]] | None = None  # horário do responsável pela conta
+    slot_minutes: int | None = Field(default=None, ge=15, le=240)  # duração da consulta
+    greeting: str | None = Field(default=None, max_length=400)  # boas-vindas da IA
 
 
 @router.post("/onboarding/niche")
@@ -404,14 +406,17 @@ async def setup_niche(body: NicheIn, admin: User = Depends(admin_only), s: Async
             s.add(DepartmentMember(department_id=d.id, user_id=admin.id, tenant_id=admin.tenant_id))
     if body.work_hours is not None:
         admin.work_hours = json.dumps(body.work_hours)
+    if body.slot_minutes:
+        admin.slot_minutes = body.slot_minutes
     tenant = await s.get(Tenant, admin.tenant_id)
     tenant.segment, tenant.onboarded = body.segment, True
+    tenant.greeting = (body.greeting or "").strip() or None
     await s.commit()
     mm = await members_map(s, admin.tenant_id)
     rows = (
         await s.execute(select(Department).where(Department.tenant_id == admin.tenant_id, Department.active.is_(True)).order_by(Department.position))
     ).scalars().all()
-    return {"segment": tenant.segment, "departments": [dept_out(d, mm.get(d.id, [])) for d in rows]}
+    return {"segment": tenant.segment, "greeting": tenant.greeting, "departments": [dept_out(d, mm.get(d.id, [])) for d in rows]}
 
 
 # ---------- plano personalizado ----------

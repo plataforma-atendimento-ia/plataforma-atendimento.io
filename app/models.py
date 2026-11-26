@@ -22,6 +22,7 @@ class Tenant(Base):
     segment: Mapped[str | None] = mapped_column(String(20), nullable=True)  # nicho: "advocacia"
     document: Mapped[str | None] = mapped_column(String(14), nullable=True)  # CNPJ ou CPF (só números)
     phone: Mapped[str | None] = mapped_column(String(20), nullable=True)  # telefone/WhatsApp do escritório
+    greeting: Mapped[str | None] = mapped_column(Text, nullable=True)  # boas-vindas que a IA usa com o cliente
     onboarded: Mapped[bool] = mapped_column(default=False)  # já respondeu as perguntas do nicho
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 

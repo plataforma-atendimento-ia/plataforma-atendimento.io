@@ -64,6 +64,26 @@ label.f{display:grid;gap:5px;font-size:12.5px;color:var(--mute);font-weight:500}
 .rules li::before{content:"○ "} .rules li.ok{color:var(--accent)} .rules li.ok::before{content:"✓ "}
 .or{display:flex;align-items:center;gap:10px;color:var(--mute);font-size:12.5px} .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
 .wabar{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--warn-soft);font-size:13px;border-bottom:1px solid var(--line)}
+/* pesquisa do nicho: letras grandes, uma pergunta por tela */
+.nq{display:grid;gap:16px;font-size:16px}
+.nq h2{font-size:26px;line-height:1.2} .nq p{margin:0;color:var(--mute);font-size:16px;line-height:1.55} .nq p b{color:var(--ink)}
+.nq-top{display:grid;gap:8px} .nq-bar{height:6px;border-radius:9px;background:var(--paper-2);overflow:hidden} .nq-bar i{display:block;height:100%;background:var(--accent);border-radius:9px;transition:width .25s}
+.bigopts{display:grid;gap:10px}
+.bigopt{display:grid;gap:4px;text-align:left;padding:14px 16px 14px 18px;border:2px solid var(--line);border-left:6px solid var(--c,var(--line));border-radius:14px;background:var(--paper);font-size:16px}
+.bigopt b{font-size:17px} .bigopt span{color:var(--mute);font-size:14.5px} .bigopt em{font-style:normal;font-size:14px;color:var(--mute)}
+.bigopt.on{border-color:var(--accent);border-left-color:var(--c,var(--accent));background:var(--soft)}
+.bigopt.check{position:relative;padding-right:46px} .bigopt.check::after{content:"";position:absolute;right:14px;top:16px;width:22px;height:22px;border-radius:6px;border:2px solid var(--line);background:var(--paper)}
+.bigopt.check.on::after{content:"✓";display:grid;place-items:center;background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:800;font-size:14px}
+.bigopt:disabled{opacity:.55}
+.arows{display:grid;gap:10px} .arow{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--line);border-left:6px solid var(--c);border-radius:12px;font-size:16px}
+.twin{display:flex;gap:6px} .twin button,.chips button{font-size:15px;padding:9px 14px;border-radius:10px} .twin button.on,.chips button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:8px} .nlabel{display:grid;gap:6px;font-weight:700;font-size:15px}
+.money{display:flex;align-items:center;gap:8px;border:2px solid var(--line);border-radius:12px;padding:4px 14px;max-width:260px} .money span{font:800 22px var(--display)} .money input{border:0;font:800 26px var(--display);padding:6px 0;background:transparent}
+.hrs{display:grid;grid-template-columns:1fr 1fr;gap:12px} .hrs input{font-size:18px;padding:11px}
+.nq textarea{font-size:16px;min-height:96px}
+.preview{display:grid;gap:6px} .bubble{background:var(--paper-2);border:1px solid var(--line);border-radius:16px 16px 16px 4px;padding:12px 14px;font-size:15.5px;max-width:90%;white-space:pre-wrap}
+.sum{display:grid;grid-template-columns:130px 1fr;gap:10px 14px;margin:0;font-size:15.5px} .sum dt{color:var(--mute);font-weight:700} .sum dd{margin:0}
+.nq-nav{display:flex;justify-content:space-between;gap:10px} .nq-nav button{font-size:16px;padding:12px 20px;border-radius:12px}
 /* login */
 #auth{min-height:100%;display:grid;grid-template-columns:1.1fr 1fr}
 #auth .side{background:var(--rail);color:#eef3f8;padding:56px clamp(24px,5vw,72px);display:flex;flex-direction:column;justify-content:space-between;gap:40px;
@@ -459,36 +479,106 @@ async function enterInner(data) {
   if (S.me.role === 'admin' && !S.ob.onboarded) openNiche();
 }
 
-// perguntas do nicho (passo 4)
+// perguntas do nicho (passo 4): uma pergunta por tela, letras grandes, explicação curta e exemplo
+const NAREAS = [
+  { k:'civel', name:'Ações comuns', sub:'Cível e consumidor', ex:'“O banco descontou um empréstimo que eu não fiz.”', color:'#2b59c3' },
+  { k:'previdenciario', name:'Previdenciário', sub:'INSS e aposentadoria', ex:'“O INSS negou o meu auxílio-doença.”', color:'#0a7a55' },
+  { k:'trabalhista', name:'Trabalhista', sub:'Patrão e empresa', ex:'“Fui demitido e não recebi a rescisão.”', color:'#b4540a' },
+  { k:'familia', name:'Família e sucessões', sub:'Divórcio, pensão, herança', ex:'“O pai do meu filho não paga a pensão.”', color:'#7a3aa8' },
+  { k:'precatorios', name:'Precatórios', sub:'Valores a receber do governo', ex:'“Quero vender o meu precatório.”', color:'#9a6b00' },
+];
+const NDAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+let N = null;
 function openNiche() {
-  const areas = [['civel', 'Ações comuns (cível e consumidor)', 'bancos, compras, plano de saúde, cobranças, indenizações'], ['previdenciario', 'Previdenciário', 'INSS, aposentadoria, BPC/LOAS, auxílio-doença'], ['trabalhista', 'Trabalhista', 'demissão, rescisão, FGTS, horas extras'], ['familia', 'Família e sucessões', 'divórcio, pensão, guarda, inventário'], ['precatorios', 'Precatórios', 'compra, venda e antecipação de precatórios e RPV']];
-  modal(`<div class="eyebrow">Passo 4 de 5</div><h2>Conte sobre o seu negócio</h2>
-    <p class="muted" style="margin:0">Com estas respostas a plataforma monta os setores, as filas e o jeito como a IA atende.</p>
-    <label class="f">Qual é o tipo de empresa?</label>
-    <div class="seg"><button class="on" type="button">Escritório de advocacia</button><button disabled title="Em breve">Clínica (em breve)</button><button disabled title="Em breve">Imobiliária (em breve)</button></div>
-    <label class="f">Quais áreas o escritório atende? Cada área vira um setor com fila própria.</label>
-    <div class="areas">${areas.map(([k, n, d]) => `<label class="area"><input type="checkbox" data-area="${k}" checked><span><b>${n}</b><br><span class="small muted">${d}</span></span></label>`).join('')}</div>
-    <label class="f">Em quais áreas a análise do caso é feita em consulta paga? Nas outras, a IA resolve pelo chat e passa para a equipe.</label>
-    <div class="checks">${areas.map(([k, n]) => `<label><input type="checkbox" data-consult="${k}" ${['previdenciario', 'trabalhista', 'familia'].includes(k) ? 'checked' : ''}> ${n}</label>`).join('')}</div>
-    <div class="grid2"><label class="f">Valor da consulta (R$)<input id="nPrice" type="number" min="0" step="10" value="200"></label>
-      <label class="f">Horário de atendimento (seg. a sex.)<span style="display:flex;gap:6px"><input id="nH0" type="time" value="09:00"><input id="nH1" type="time" value="18:00"></span></label></div>
-    <div class="row-end"><button class="primary" id="nGo">Configurar meu escritório</button></div>`, true);
-  $('nGo').onclick = async () => {
-    const pick = sel => [...document.querySelectorAll(sel)].filter(x => x.checked);
-    const chosen = pick('[data-area]').map(x => x.dataset.area);
-    if (!chosen.length) { toast('Escolha pelo menos uma área'); return; }
-    const h = [$('nH0').value, $('nH1').value], wh = {}; for (let i = 0; i < 5; i++) wh[String(i)] = h;
-    const price = $('nPrice').value;
+  N = { step: 0, areas: new Set(NAREAS.map(a => a.k)), consult: new Set(['previdenciario', 'trabalhista', 'familia']), price: 200, slot: 60,
+        days: new Set([0, 1, 2, 3, 4]), h0: '09:00', h1: '18:00',
+        greeting: `Olá! Aqui é o assistente do ${S.ob?.office_name || 'escritório'}. Me conta com as suas palavras o que aconteceu, que eu te encaminho para a pessoa certa.` };
+  renderNiche();
+}
+function nicheSteps() {
+  const s = ['tipo', 'areas', 'atendimento'];
+  if ([...N.consult].some(k => N.areas.has(k))) s.push('consulta');
+  return s.concat(['horario', 'boasvindas', 'resumo']);
+}
+function renderNiche() {
+  const steps = nicheSteps(), key = steps[N.step], total = steps.length;
+  const head = `<div class="nq-top"><span class="eyebrow">Passo 4 de 5 · pergunta ${N.step + 1} de ${total}</span><div class="nq-bar"><i style="width:${Math.round((N.step + 1) / total * 100)}%"></i></div></div>`;
+  let body = '';
+  if (key === 'tipo') {
+    body = `<h2>Qual é o tipo do seu negócio?</h2><p>A plataforma se adapta ao seu ramo: setores, perguntas da IA e linguagem.</p>
+      <div class="bigopts"><button class="bigopt on" type="button"><b>Escritório de advocacia</b><span>Filas por área do Direito, IA que explica sem juridiquês</span></button>
+      <button class="bigopt" disabled><b>Clínica</b><span>Em breve</span></button><button class="bigopt" disabled><b>Imobiliária</b><span>Em breve</span></button></div>`;
+  } else if (key === 'areas') {
+    body = `<h2>Em quais áreas o escritório atua?</h2><p>Cada área escolhida vira um setor com fila própria. A IA lê a mensagem do cliente e manda para a fila certa.</p>
+      <div class="bigopts">${NAREAS.map(a => `<button type="button" class="bigopt check ${N.areas.has(a.k) ? 'on' : ''}" data-area="${a.k}" style="--c:${a.color}"><b>${a.name}</b><span>${a.sub}</span><em>Cliente escreve: ${a.ex}</em></button>`).join('')}</div>
+      <p class="hint">Toque para marcar ou desmarcar. Dá para mudar depois em Equipe e setores.</p>`;
+  } else if (key === 'atendimento') {
+    body = `<h2>Como cada área atende o cliente?</h2>
+      <p><b>Pelo chat:</b> a IA tira as dúvidas e passa a conversa para a equipe.<br><b>Consulta paga:</b> a análise do caso é numa consulta, e a IA já oferece os horários livres da agenda.</p>
+      <div class="arows">${NAREAS.filter(a => N.areas.has(a.k)).map(a => `<div class="arow" style="--c:${a.color}"><b>${a.name}</b>
+        <div class="twin"><button type="button" data-mode="chat" data-k="${a.k}" class="${N.consult.has(a.k) ? '' : 'on'}">Pelo chat</button><button type="button" data-mode="consulta" data-k="${a.k}" class="${N.consult.has(a.k) ? 'on' : ''}">Consulta paga</button></div></div>`).join('')}</div>`;
+  } else if (key === 'consulta') {
+    body = `<h2>Quanto custa a consulta e quanto tempo dura?</h2><p>A IA informa o valor ao oferecer os horários, para o cliente chegar sabendo.</p>
+      <label class="nlabel">Valor da consulta</label><div class="money"><span>R$</span><input id="nqPrice" type="number" min="0" step="10" value="${N.price}"></div>
+      <div class="chips">${[150, 200, 250, 300, 400].map(v => `<button type="button" data-price="${v}" class="${N.price == v ? 'on' : ''}">R$ ${v}</button>`).join('')}</div>
+      <label class="nlabel">Duração</label><div class="chips">${[30, 45, 60, 90].map(v => `<button type="button" data-slot="${v}" class="${N.slot == v ? 'on' : ''}">${v} min</button>`).join('')}</div>`;
+  } else if (key === 'horario') {
+    body = `<h2>Em quais dias e horários vocês atendem?</h2><p>A IA só oferece consulta dentro deste horário. Cada advogado pode ajustar o próprio horário depois, na Agenda.</p>
+      <label class="nlabel">Dias</label><div class="chips">${NDAYS.map((d, i) => `<button type="button" data-day="${i}" class="${N.days.has(i) ? 'on' : ''}">${d}</button>`).join('')}</div>
+      <div class="hrs"><label class="nlabel">Das<input id="nqH0" type="time" value="${N.h0}"></label><label class="nlabel">Até<input id="nqH1" type="time" value="${N.h1}"></label></div>`;
+  } else if (key === 'boasvindas') {
+    body = `<h2>Como a IA deve cumprimentar o cliente?</h2><p>É a primeira mensagem que o cliente recebe quando ainda não deu para entender o assunto. Escreva do jeito que o escritório fala.</p>
+      <textarea id="nqGreet" maxlength="400">${esc(N.greeting)}</textarea>
+      <div class="preview"><span class="small muted">Como o cliente vê no WhatsApp:</span><div class="bubble" id="nqPrev">${esc(N.greeting)}</div></div>`;
+  } else {
+    const chat = NAREAS.filter(a => N.areas.has(a.k) && !N.consult.has(a.k)), paid = NAREAS.filter(a => N.areas.has(a.k) && N.consult.has(a.k));
+    body = `<h2>Confira antes de configurar</h2><p>Tudo pode ser alterado depois.</p>
+      <dl class="sum">
+        <dt>Setores</dt><dd>${['Atendimento geral'].concat(NAREAS.filter(a => N.areas.has(a.k)).map(a => a.name)).join(', ')}</dd>
+        <dt>Pelo chat</dt><dd>${chat.map(a => a.name).join(', ') || '—'}</dd>
+        <dt>Consulta paga</dt><dd>${paid.length ? paid.map(a => a.name).join(', ') + ` · R$ ${N.price} · ${N.slot} min` : '—'}</dd>
+        <dt>Horário</dt><dd>${[...N.days].sort().map(i => NDAYS[i]).join(', ')} · ${N.h0} às ${N.h1}</dd>
+        <dt>Boas-vindas</dt><dd>${esc(N.greeting)}</dd></dl>`;
+  }
+  const last = key === 'resumo';
+  modal(`<div class="nq">${head}${body}<div class="nq-nav">${N.step ? '<button type="button" id="nqBack">Voltar</button>' : '<span></span>'}<button type="button" class="primary" id="nqNext">${last ? 'Configurar meu escritório' : 'Continuar'}</button></div><small id="nqErr" style="color:var(--bad)"></small></div>`, true);
+  const box = $('mbox');
+  box.querySelectorAll('[data-area]').forEach(b => b.onclick = () => { const k = b.dataset.area; N.areas.has(k) ? N.areas.delete(k) : N.areas.add(k); b.classList.toggle('on'); });
+  box.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { b.dataset.mode === 'consulta' ? N.consult.add(b.dataset.k) : N.consult.delete(b.dataset.k); b.parentNode.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); });
+  box.querySelectorAll('[data-price]').forEach(b => b.onclick = () => { N.price = +b.dataset.price; $('nqPrice').value = N.price; box.querySelectorAll('[data-price]').forEach(x => x.classList.toggle('on', x === b)); });
+  box.querySelectorAll('[data-slot]').forEach(b => b.onclick = () => { N.slot = +b.dataset.slot; box.querySelectorAll('[data-slot]').forEach(x => x.classList.toggle('on', x === b)); });
+  box.querySelectorAll('[data-day]').forEach(b => b.onclick = () => { const d = +b.dataset.day; N.days.has(d) ? N.days.delete(d) : N.days.add(d); b.classList.toggle('on'); });
+  if ($('nqGreet')) $('nqGreet').oninput = e => { $('nqPrev').textContent = e.target.value || '…'; };
+  if ($('nqBack')) $('nqBack').onclick = () => { save(); N.step--; renderNiche(); };
+  $('nqNext').onclick = async () => {
+    save();
+    const err = check(key); if (err) { $('nqErr').textContent = err; return; }
+    if (!last) { N.step++; renderNiche(); return; }
+    const wh = {}; [...N.days].forEach(d => wh[String(d)] = [N.h0, N.h1]);
     try {
-      const r = await api('/onboarding/niche', { method:'POST', body:{ segment:'advocacia', areas:chosen, consult_areas: pick('[data-consult]').map(x => x.dataset.consult).filter(k => chosen.includes(k)), consult_price_cents: price ? Math.round(parseFloat(price) * 100) : null, work_hours: wh } });
+      const r = await api('/onboarding/niche', { method:'POST', body:{ segment:'advocacia', areas:[...N.areas], consult_areas:[...N.consult].filter(k => N.areas.has(k)),
+        consult_price_cents: Math.round(N.price * 100), work_hours: wh, slot_minutes: N.slot, greeting: N.greeting } });
       await refreshAll();
-      modal(`<div class="eyebrow">Escritório configurado</div><h2>Pronto. Veja o que foi montado</h2>
-        <div class="checks">${r.departments.map(d => `<span class="chip"><i style="background:${esc(d.color)}"></i>${esc(d.name)}${d.needs_consult ? ' · consulta ' + brl(d.consult_price_cents) : ''}</span>`).join('')}</div>
-        <p style="margin:0">Você já está em todos os setores, então recebe os clientes desde já. Depois, em <b>Equipe e setores</b>, adicione as pessoas do escritório e indique responsáveis diretos (como quem cuida de precatórios).</p>
-        <div class="row-end"><button class="primary" id="nNext">Passo 5: conectar o WhatsApp</button></div>`, true);
+      modal(`<div class="nq"><span class="eyebrow">Escritório configurado</span><h2>Pronto! Seu escritório está montado</h2>
+        <div class="bigopts">${r.departments.map(d => `<div class="bigopt on" style="--c:${esc(d.color)};cursor:default"><b>${esc(d.name)}</b><span>${d.needs_consult ? 'Consulta paga · ' + brl(d.consult_price_cents) : 'Atendimento pelo chat'}</span></div>`).join('')}</div>
+        <p>Você já está em todos os setores e recebe os clientes desde agora. Depois, em <b>Equipe e setores</b>, adicione as pessoas do escritório e indique quem cuida de cada área.</p>
+        <div class="nq-nav"><span></span><button class="primary" id="nNext">Último passo: conectar o WhatsApp</button></div></div>`, true);
       $('nNext').onclick = () => openWiz(2);
-    } catch (e) { toast(e.message); }
+    } catch (e) { $('nqErr').textContent = e.message; }
   };
+  function save() {
+    if ($('nqPrice')) N.price = parseFloat($('nqPrice').value || '0');
+    if ($('nqH0')) { N.h0 = $('nqH0').value; N.h1 = $('nqH1').value; }
+    if ($('nqGreet')) N.greeting = $('nqGreet').value.trim();
+  }
+  function check(k) {
+    if (k === 'areas' && !N.areas.size) return 'Escolha pelo menos uma área.';
+    if (k === 'consulta' && !(N.price >= 0)) return 'Informe o valor da consulta.';
+    if (k === 'horario' && !N.days.size) return 'Escolha pelo menos um dia.';
+    if (k === 'horario' && N.h0 >= N.h1) return 'O horário de início precisa ser antes do fim.';
+    if (k === 'boasvindas' && N.greeting.length < 10) return 'Escreva uma mensagem de boas-vindas.';
+    return '';
+  }
 }
 
 async function refreshAll() {

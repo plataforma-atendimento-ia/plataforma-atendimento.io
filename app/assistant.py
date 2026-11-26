@@ -148,7 +148,7 @@ async def on_inbound(s: AsyncSession, conv: Conversation, contact: Contact, text
         elif decision.explanation:
             replies.append(decision.explanation + "\n\n" + DISCLAIMER)
         elif decision.intent == "saudacao" or conv.ai_state is None:
-            replies.append(f"Olá! Aqui é o assistente do {tenant.name}. Vou te encaminhar para a pessoa certa.")
+            replies.append(tenant.greeting or f"Olá! Aqui é o assistente do {tenant.name}. Vou te encaminhar para a pessoa certa.")
         replies.append("Sobre qual assunto você quer falar?\n" + menu + "\nResponda só com o número, ou me conta com as suas palavras.")
         conv.ai_state = "triage"
         ctx["menu"] = slugs
