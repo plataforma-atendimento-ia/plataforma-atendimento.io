@@ -17,6 +17,7 @@ router = APIRouter(tags=["inbox"])
 class SendIn(BaseModel):
     body: str = Field(min_length=1, max_length=4000)
     client_id: str | None = Field(default=None, max_length=64)  # idempotência do cliente
+    reply_to_id: str | None = Field(default=None, max_length=32)  # responder citando uma mensagem
 
 
 class TransferIn(BaseModel):
@@ -234,6 +235,11 @@ async def send_message(
         idempotency_key=key,
         next_attempt_at=utcnow(),
     )
+    if body.reply_to_id:
+        quoted = await s.get(Message, body.reply_to_id)
+        if quoted is None or quoted.conversation_id != conv_id:
+            raise HTTPException(422, "a mensagem citada não é desta conversa")
+        m.reply_to_id = quoted.id
     s.add(m)
     c.last_message_at = utcnow()
     c.last_preview = body.body[:200]

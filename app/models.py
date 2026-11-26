@@ -194,7 +194,19 @@ class Message(Base):
     tenant_id: Mapped[str] = mapped_column(ForeignKey("tenants.id"), index=True)
     conversation_id: Mapped[str] = mapped_column(ForeignKey("conversations.id"), index=True)
     direction: Mapped[str] = mapped_column(String(3))  # in | out
-    body: Mapped[str] = mapped_column(Text)
+    body: Mapped[str] = mapped_column(Text)  # texto ou legenda
+    kind: Mapped[str] = mapped_column(String(10), default="text")  # text|image|video|audio|document
+    media_path: Mapped[str | None] = mapped_column(Text, nullable=True)  # relativo a MEDIA_DIR
+    media_mime: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    media_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    media_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    voice: Mapped[bool] = mapped_column(default=False)  # áudio gravado = mensagem de voz
+    reply_to_id: Mapped[str | None] = mapped_column(String(32), nullable=True)  # mensagem citada
+    edited_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)  # "apagada para todos"
+    deleted_by: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    reactions: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON {"cliente": "👍", "<user_id>": "❤️"}
+    remote_note: Mapped[str | None] = mapped_column(String(300), nullable=True)  # o que não deu para refletir no WhatsApp
     status: Mapped[str] = mapped_column(String(12), index=True)
     sender_user_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
     wamid: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)

@@ -16,6 +16,8 @@ import makeWASocket, {
   useMultiFileAuthState,
   fetchLatestBaileysVersion,
   Browsers,
+  downloadMediaMessage,
+  normalizeMessageContent,
 } from '@whiskeysockets/baileys'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
@@ -41,6 +43,8 @@ const AUTH_DIR =
     ? path.join(env.LOCALAPPDATA || os.homedir(), 'plataforma-bridge', 'auth')
     : path.join(os.homedir(), '.plataforma-bridge', 'auth'))
 const MAX_PER_MINUTE = Number(env.BRIDGE_MAX_PER_MINUTE || 20)
+const MEDIA_ROOT = path.resolve(here, '..', env.MEDIA_DIR || 'data/media')
+const MAX_INBOUND_BYTES = 100 * 1024 * 1024
 
 if (!SECRET || SECRET.length < 16) {
   console.error('BRIDGE_SECRET ausente ou curto demais (mínimo 16 caracteres). Defina no arquivo .env.')
@@ -155,20 +159,52 @@ async function startSession(id) {
       if (jid.endsWith('@g.us') || jid === 'status@broadcast' || jid.endsWith('@newsletter')) continue // grupos e status: fora do escopo
       const alt = m.key.remoteJidAlt
       const phone = digits(jid.endsWith('@lid') ? userPart(alt) || userPart(jid) : userPart(jid))
-      const text = textOf(m) || '[tipo de mensagem não suportado ainda]'
-      toPlatform('/bridge/inbound', {
-        channel_id: id,
-        jid,
-        phone,
-        name: m.pushName || null,
-        text,
-        wamid: m.key.id,
-      })
+      const content = normalizeMessageContent(m.message) || {}
+      // o cliente apagou ou editou uma mensagem
+      const proto = content.protocolMessage
+      if (proto) {
+        if (proto.type === 0 && proto.key?.id) toPlatform('/bridge/update', { channel_id: id, wamid: proto.key.id, action: 'revoke' })
+        if (proto.type === 14 && proto.key?.id) {
+          const ed = normalizeMessageContent(proto.editedMessage) || {}
+          const t = ed.conversation || ed.extendedTextMessage?.text || ''
+          if (t) toPlatform('/bridge/update', { channel_id: id, wamid: proto.key.id, action: 'edit', text: t })
+        }
+        continue
+      }
+      // o cliente reagiu
+      if (content.reactionMessage) {
+        const r = content.reactionMessage
+        if (r.key?.id) toPlatform('/bridge/update', { channel_id: id, wamid: r.key.id, action: 'react', emoji: r.text || '' })
+        continue
+      }
+      const body = { channel_id: id, jid, phone, name: m.pushName || null, wamid: m.key.id, text: textOf(m) }
+      const ctx = (content.extendedTextMessage || content.imageMessage || content.videoMessage || content.audioMessage || content.documentMessage || {}).contextInfo
+      if (ctx?.stanzaId) body.reply_wamid = ctx.stanzaId
+      const part = content.imageMessage || content.videoMessage || content.audioMessage || content.documentMessage || content.stickerMessage
+      if (part) {
+        try {
+          if (Number(part.fileLength || 0) > MAX_INBOUND_BYTES) throw new Error('arquivo grande demais')
+          const buf = await downloadMediaMessage(m, 'buffer', {}, { logger, reuploadRequest: sock.updateMediaMessage })
+          body.media_b64 = buf.toString('base64')
+          body.media_mime = (part.mimetype || 'application/octet-stream').split(';')[0]
+          body.media_name = part.fileName || null
+          body.voice = Boolean(content.audioMessage?.ptt)
+        } catch (e) {
+          body.text = body.text || '[arquivo recebido, mas não foi possível baixar]'
+          console.warn(`[${id}] falha ao baixar arquivo: ${e.message}`)
+        }
+      }
+      if (!body.text && !body.media_b64) body.text = '[tipo de mensagem não suportado ainda]'
+      toPlatform('/bridge/inbound', body)
     }
   })
 
   sock.ev.on('messages.update', updates => {
     for (const { key, update } of updates) {
+      if (!key?.fromMe && update?.messageStubType === 1 && key?.id) {  // REVOKE: cliente apagou para todos
+        toPlatform('/bridge/update', { channel_id: id, wamid: key.id, action: 'revoke' })
+        continue
+      }
       if (!key?.fromMe || typeof update?.status !== 'number') continue
       const map = { 2: 'sent', 3: 'delivered', 4: 'read', 5: 'read' }
       if (map[update.status]) toPlatform('/bridge/status', { channel_id: id, wamid: key.id, status: map[update.status] })
@@ -178,8 +214,22 @@ async function startSession(id) {
 }
 
 // Envio com ritmo humano e limite por minuto (reduz, mas NÃO elimina, o risco de banimento).
-function enqueueSend(s, jid, text, key) {
+function buildContent(p) {
+  const kind = p.kind || 'text'
+  if (kind === 'text') return { text: String(p.text || '') }
+  const file = path.resolve(String(p.path || ''))
+  if (!file.startsWith(MEDIA_ROOT + path.sep) || !fs.existsSync(file)) throw Object.assign(new Error('arquivo não encontrado'), { status: 422 })
+  const buf = fs.readFileSync(file)
+  const caption = p.text || undefined
+  if (kind === 'image') return { image: buf, caption }
+  if (kind === 'video') return { video: buf, caption }
+  if (kind === 'audio') return { audio: buf, mimetype: p.voice ? 'audio/ogg; codecs=opus' : p.mime, ptt: Boolean(p.voice) }
+  return { document: buf, mimetype: p.mime || 'application/octet-stream', fileName: p.filename || 'documento', caption }
+}
+
+function enqueueSend(s, jid, p) {
   const run = async () => {
+    const key = p.key
     if (key && s.sent.has(key)) return { id: s.sent.get(key), duplicate: true }
     const now = Date.now()
     s.stamps = s.stamps.filter(t => now - t < 60_000)
@@ -189,9 +239,13 @@ function enqueueSend(s, jid, text, key) {
       throw e
     }
     s.stamps.push(now)
-    await s.sock.sendPresenceUpdate('composing', jid)
-    await sleep(Math.min(3500, 600 + text.length * 25) + rand(0, 600))
-    const sent = await s.sock.sendMessage(jid, { text })
+    const content = buildContent(p)
+    const options = p.reply?.id
+      ? { quoted: { key: { remoteJid: jid, fromMe: Boolean(p.reply.from_me), id: p.reply.id }, message: { conversation: p.reply.text || '' } } }
+      : undefined
+    await s.sock.sendPresenceUpdate(p.kind === 'audio' && p.voice ? 'recording' : 'composing', jid)
+    await sleep(Math.min(3500, 600 + String(p.text || '').length * 25) + rand(0, 600))
+    const sent = await s.sock.sendMessage(jid, content, options)
     await s.sock.sendPresenceUpdate('paused', jid)
     if (key) {
       s.sent.set(key, sent.key.id)
@@ -200,9 +254,9 @@ function enqueueSend(s, jid, text, key) {
     await sleep(rand(400, 1200)) // intervalo mínimo entre mensagens
     return { id: sent.key.id }
   }
-  const p = s.queue.then(run, run)
-  s.queue = p.catch(() => {})
-  return p
+  const q = s.queue.then(run, run)
+  s.queue = q.catch(() => {})
+  return q
 }
 
 // --- API local ---
@@ -224,7 +278,7 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost')
     if (url.pathname === '/health') return send(res, 200, { ok: true, sessions: sessions.size })
     if (req.headers['x-bridge-secret'] !== SECRET) return send(res, 401, { error: 'segredo inválido' })
-    const m = url.pathname.match(/^\/sessions\/([A-Za-z0-9_-]{6,64})(?:\/(start|stop|send))?$/)
+    const m = url.pathname.match(/^\/sessions\/([A-Za-z0-9_-]{6,64})(?:\/(start|stop|send|edit|revoke|react))?$/)
     if (!m) return send(res, 404, { error: 'rota desconhecida' })
     const [, id, action] = m
 
@@ -250,13 +304,29 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && action === 'send') {
       const s = sessions.get(id)
       if (!s || s.status !== 'connected') return send(res, 503, { error: 'WhatsApp não está conectado', retryable: true })
-      const { to, text, key } = await readJson(req)
-      if (!to || !text) return send(res, 422, { error: 'to e text são obrigatórios', retryable: false })
-      const jid = to.includes('@') ? to : `${digits(to)}@s.whatsapp.net`
+      const p = await readJson(req)
+      if (!p.to || (!p.text && (p.kind || 'text') === 'text')) return send(res, 422, { error: 'destino e conteúdo são obrigatórios', retryable: false })
+      const jid = p.to.includes('@') ? p.to : `${digits(p.to)}@s.whatsapp.net`
       try {
-        return send(res, 200, await enqueueSend(s, jid, String(text), key))
+        return send(res, 200, await enqueueSend(s, jid, p))
       } catch (e) {
-        return send(res, e.status || 502, { error: e.message, retryable: true })
+        return send(res, e.status || 502, { error: e.message, retryable: e.status !== 422 })
+      }
+    }
+    if (req.method === 'POST' && ['edit', 'revoke', 'react'].includes(action)) {
+      const s = sessions.get(id)
+      if (!s || s.status !== 'connected') return send(res, 503, { error: 'WhatsApp não está conectado', retryable: true })
+      const p = await readJson(req)
+      if (!p.to || !p.id) return send(res, 422, { error: 'destino e mensagem são obrigatórios', retryable: false })
+      const jid = p.to.includes('@') ? p.to : `${digits(p.to)}@s.whatsapp.net`
+      const key = { remoteJid: jid, fromMe: action === 'react' ? Boolean(p.from_me) : true, id: p.id }
+      try {
+        if (action === 'edit') await s.sock.sendMessage(jid, { text: String(p.text || ''), edit: key })
+        if (action === 'revoke') await s.sock.sendMessage(jid, { delete: key })
+        if (action === 'react') await s.sock.sendMessage(jid, { react: { text: String(p.emoji || ''), key } })
+        return send(res, 200, { ok: true })
+      } catch (e) {
+        return send(res, 502, { error: e.message, retryable: true })
       }
     }
     return send(res, 405, { error: 'método não permitido' })

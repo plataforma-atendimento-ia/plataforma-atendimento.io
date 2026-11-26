@@ -9,9 +9,25 @@ class ChannelError(Exception):
         self.retryable = retryable
 
 
-class ChannelProvider(Protocol):
-    """Abstração de canal. Instagram/webchat/e-mail entram implementando esta interface."""
+class NotSupported(ChannelError):
+    """O canal não oferece este recurso (ex.: a API oficial da Meta não apaga nem edita mensagens)."""
 
-    async def send_text(self, channel: Channel, to: str, body: str, idempotency_key: str) -> str:
-        """Envia texto e devolve o id externo (wamid). Levanta ChannelError em falha."""
-        ...
+    def __init__(self, message: str):
+        super().__init__(message, retryable=False)
+
+
+class ChannelProvider(Protocol):
+    """Abstração de canal. Instagram/webchat/e-mail entram implementando esta interface.
+
+    payload de send(): {"kind": text|image|video|audio|document, "text": str, "path": caminho absoluto do arquivo,
+    "mime": str, "filename": str, "voice": bool, "key": chave de idempotência,
+    "reply": {"id": wamid citado, "from_me": bool, "text": trecho} ou None}
+    """
+
+    async def send(self, channel: Channel, to: str, payload: dict) -> str: ...
+
+    async def edit(self, channel: Channel, to: str, wamid: str, text: str) -> None: ...
+
+    async def revoke(self, channel: Channel, to: str, wamid: str) -> None: ...
+
+    async def react(self, channel: Channel, to: str, wamid: str, emoji: str, from_me: bool) -> None: ...

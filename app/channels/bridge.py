@@ -41,9 +41,26 @@ async def bridge_up() -> bool:
 class BridgeProvider:
     """Envia pela ponte QR. `to` é o endereço exato do contato (jid), guardado ao receber a mensagem."""
 
-    async def send_text(self, channel: Channel, to: str, body: str, idempotency_key: str) -> str:
+    async def _call(self, channel: Channel, action: str, body: dict) -> dict:
         try:
-            data = await request("POST", f"/sessions/{channel.id}/send", {"to": to, "text": body, "key": idempotency_key})
+            return await request("POST", f"/sessions/{channel.id}/{action}", body, timeout=90)
         except BridgeDown as e:
             raise ChannelError(f"ponte do WhatsApp (QR) não está rodando: {e}", retryable=True) from e
-        return data["id"]
+
+    async def send(self, channel: Channel, to: str, payload: dict) -> str:
+        body = {"to": to, "text": payload.get("text", ""), "key": payload.get("key"), "kind": payload.get("kind", "text"),
+                "path": payload.get("path"), "mime": payload.get("mime"), "filename": payload.get("filename"),
+                "voice": bool(payload.get("voice")), "reply": payload.get("reply")}
+        return (await self._call(channel, "send", body))["id"]
+
+    async def send_text(self, channel: Channel, to: str, body: str, idempotency_key: str) -> str:
+        return await self.send(channel, to, {"kind": "text", "text": body, "key": idempotency_key})
+
+    async def edit(self, channel, to, wamid, text):
+        await self._call(channel, "edit", {"to": to, "id": wamid, "text": text})
+
+    async def revoke(self, channel, to, wamid):
+        await self._call(channel, "revoke", {"to": to, "id": wamid})
+
+    async def react(self, channel, to, wamid, emoji, from_me):
+        await self._call(channel, "react", {"to": to, "id": wamid, "emoji": emoji, "from_me": from_me})

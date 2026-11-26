@@ -20,6 +20,20 @@ def backoff_for(attempts: int) -> timedelta:
     return timedelta(seconds=steps[min(max(attempts - 1, 0), len(steps) - 1)])
 
 
+async def build_payload(s, msg: Message) -> dict:
+    """O que o canal precisa para enviar: texto ou arquivo, e a mensagem citada (se houver)."""
+    from . import media
+
+    payload = {"kind": msg.kind or "text", "text": msg.body, "key": msg.idempotency_key, "voice": bool(msg.voice),
+               "mime": msg.media_mime, "filename": msg.media_name, "path": media.abs_path(msg.media_path) if msg.media_path else None,
+               "reply": None}
+    if msg.reply_to_id:
+        quoted = await s.get(Message, msg.reply_to_id)
+        if quoted is not None and quoted.wamid:
+            payload["reply"] = {"id": quoted.wamid, "from_me": quoted.direction == "out", "text": (quoted.body or "")[:200]}
+    return payload
+
+
 async def reconcile_stuck() -> None:
     """Mensagens presas em `sending` (worker caiu) voltam para a fila."""
     limit = utcnow() - timedelta(seconds=settings.sending_timeout_seconds)
@@ -72,7 +86,7 @@ async def process_batch(test_provider=None, limit: int = 20) -> int:
             chosen = (test_provider or provider_for(channel)) if channel.is_test else provider_for(channel)
             try:
                 to = contact.wa_jid or contact.phone  # ponte QR responde ao endereço exato recebido
-                wamid = await chosen.send_text(channel, to, msg.body, msg.idempotency_key)
+                wamid = await chosen.send(channel, to, await build_payload(s, msg))
                 msg.status, msg.wamid, msg.error = "sent", wamid, None
                 msg.attempts += 1
             except Exception as e:  # ChannelError ou qualquer erro inesperado

@@ -9,7 +9,10 @@ from ..config import settings
 from ..db import SessionLocal
 from ..models import Channel
 from ..realtime import hub
-from .webhooks import _apply_status, _store_inbound
+import base64
+
+from .. import media
+from .webhooks import _apply_status, _store_inbound, customer_action
 
 router = APIRouter(prefix="/bridge", tags=["bridge"])
 
@@ -40,8 +43,21 @@ class InboundIn(BaseModel):
     jid: str = Field(max_length=64)
     phone: str = Field(min_length=3, max_length=32)
     name: str | None = Field(default=None, max_length=200)
-    text: str = Field(max_length=8000)
+    text: str = Field(default="", max_length=8000)
     wamid: str = Field(max_length=128)
+    reply_wamid: str | None = Field(default=None, max_length=128)
+    media_b64: str | None = None
+    media_mime: str | None = Field(default=None, max_length=120)
+    media_name: str | None = Field(default=None, max_length=255)
+    voice: bool = False
+
+
+class UpdateIn(BaseModel):
+    channel_id: str
+    wamid: str = Field(max_length=128)
+    action: str = Field(pattern="^(revoke|edit|react)$")
+    text: str = Field(default="", max_length=8000)
+    emoji: str = Field(default="", max_length=8)
 
 
 class StatusIn(BaseModel):
@@ -73,8 +89,26 @@ async def inbound(body: InboundIn, x_bridge_secret: str | None = Header(default=
         ch = await _qr_channel(s, body.channel_id)
         if ch.link_status == "disconnected":
             return {"created": False}
-        created = await _store_inbound(s, ch, body.phone, body.name, body.text, body.wamid, wa_jid=body.jid)
+        media_info = None
+        if body.media_b64:
+            try:
+                media_info = media.store_incoming(ch.tenant_id, base64.b64decode(body.media_b64), body.media_mime or "",
+                                                  body.media_name, body.voice)
+            except (ValueError, media.MediaError):
+                body.text = body.text or "[arquivo recebido, mas inválido]"
+        created = await _store_inbound(s, ch, body.phone, body.name, body.text, body.wamid, wa_jid=body.jid,
+                                       media_info=media_info, reply_wamid=body.reply_wamid)
     return {"created": created}
+
+
+@router.post("/update")
+async def update(body: UpdateIn, x_bridge_secret: str | None = Header(default=None)):
+    """O cliente apagou, editou ou reagiu a uma mensagem."""
+    _check(x_bridge_secret)
+    async with SessionLocal() as s:
+        ch = await _qr_channel(s, body.channel_id)
+        applied = await customer_action(s, ch.tenant_id, body.wamid, body.action, body.text, body.emoji)
+    return {"applied": applied}
 
 
 @router.post("/status")

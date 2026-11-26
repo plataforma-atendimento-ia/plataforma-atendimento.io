@@ -115,11 +115,11 @@ async def test_real_number_receives_via_webhook_and_replies_through_meta(client,
 
     sent = {}
 
-    async def fake_send(channel, to, body, key):
-        sent.update(channel_is_test=channel.is_test, to=to, body=body, token=channel.access_token)
+    async def fake_send(channel, to, payload):
+        sent.update(channel_is_test=channel.is_test, to=to, body=payload["text"], token=channel.access_token)
         return "wamid.OUT1"
 
-    monkeypatch.setattr(cloud, "send_text", fake_send)
+    monkeypatch.setattr(cloud, "send", fake_send)
     await client.post(f"/conversations/{conv['id']}/claim", headers=admin)
     await client.post(f"/conversations/{conv['id']}/messages", headers=admin, json={"body": "Atendemos sim!"})
     await process_batch(provider)

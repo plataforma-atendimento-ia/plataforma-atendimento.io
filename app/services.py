@@ -1,3 +1,5 @@
+import json
+
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,12 +18,40 @@ async def conv_payload(s: AsyncSession, c: Conversation) -> dict:
     return conv_out(c, contact, lead_out(await get_lead(s, c.tenant_id, c.contact_id)))
 
 
+KIND_LABEL = {"image": "📷 Foto", "video": "🎬 Vídeo", "audio": "🎤 Áudio", "document": "📄 Documento"}
+
+
+def preview_of(m: Message) -> str:
+    if m.deleted_at:
+        return "Mensagem apagada"
+    if (m.kind or "text") == "text":
+        return (m.body or "")[:200]
+    label = "🎤 Mensagem de voz" if m.voice else KIND_LABEL.get(m.kind, "Arquivo")
+    return (label + (": " + m.body if m.body else ""))[:200]
+
+
 def msg_out(m: Message) -> dict:
+    deleted = m.deleted_at is not None
+    try:
+        reactions = json.loads(m.reactions) if m.reactions else {}
+    except ValueError:
+        reactions = {}
     return {
         "id": m.id,
         "conversation_id": m.conversation_id,
         "direction": m.direction,
-        "body": m.body,
+        "body": "" if deleted else m.body,
+        "kind": "text" if deleted else (m.kind or "text"),
+        "media_url": f"/media/{m.id}" if (m.media_path and not deleted) else None,
+        "media_mime": m.media_mime if not deleted else None,
+        "media_name": m.media_name if not deleted else None,
+        "media_size": m.media_size if not deleted else None,
+        "voice": bool(m.voice),
+        "reply_to_id": m.reply_to_id,
+        "edited": m.edited_at is not None,
+        "deleted": deleted,
+        "reactions": reactions,
+        "remote_note": m.remote_note,
         "status": m.status,
         "error": m.error,
         "attempts": m.attempts,
@@ -49,8 +79,10 @@ def conv_out(c: Conversation, contact: Contact, lead: dict | None = None) -> dic
 
 
 async def handle_inbound(
-    s: AsyncSession, channel: Channel, phone: str, name: str | None, text: str, wamid: str, wa_jid: str | None = None
+    s: AsyncSession, channel: Channel, phone: str, name: str | None, text: str, wamid: str, wa_jid: str | None = None,
+    media: dict | None = None, reply_wamid: str | None = None,
 ) -> tuple[Conversation, Message] | None:
+    """media: {"path", "mime", "name", "size", "kind", "voice"} já gravado em MEDIA_DIR."""
     """Registra mensagem recebida. Idempotente por wamid. Devolve None se for duplicada."""
     s.add(InboundEvent(tenant_id=channel.tenant_id, wamid=wamid))
     try:
@@ -96,9 +128,17 @@ async def handle_inbound(
         wamid=wamid,
         idempotency_key=wamid,
     )
+    if media:
+        msg.kind, msg.media_path, msg.media_mime = media["kind"], media["path"], media["mime"]
+        msg.media_name, msg.media_size, msg.voice = media.get("name"), media.get("size"), bool(media.get("voice"))
+    if reply_wamid:
+        quoted = (
+            await s.execute(select(Message.id).where(Message.conversation_id == conv.id, Message.wamid == reply_wamid))
+        ).scalar_one_or_none()
+        msg.reply_to_id = quoted
     s.add(msg)
     conv.last_message_at = utcnow()
-    conv.last_preview = text[:200]
+    conv.last_preview = preview_of(msg)
     await s.commit()
     return conv, msg
 

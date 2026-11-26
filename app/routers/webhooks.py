@@ -7,7 +7,12 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .. import assistant
+import base64
+import json
+
+from .. import assistant, media
+from ..channels import cloud
+from ..db import utcnow
 from ..config import settings
 from ..db import SessionLocal
 from ..deps import current_user, get_db
@@ -56,23 +61,67 @@ async def _process_change(value: dict) -> None:
         s.sync_session.info["tenant_id"] = channel.tenant_id
         names = {c.get("wa_id"): c.get("profile", {}).get("name") for c in value.get("contacts", [])}
         for m in value.get("messages", []):
-            if m.get("type") == "text":
+            kind = m.get("type")
+            reply_wamid = (m.get("context") or {}).get("id")
+            if kind == "reaction":  # cliente reagiu a uma mensagem
+                r = m.get("reaction") or {}
+                await customer_action(s, channel.tenant_id, r.get("message_id"), "react", emoji=r.get("emoji") or "")
+                continue
+            text, media_info = "", None
+            if kind == "text":
                 text = m.get("text", {}).get("body", "")
+            elif kind in ("image", "video", "audio", "document", "sticker"):
+                part = m.get(kind) or {}
+                text = part.get("caption", "")
+                try:
+                    data, mime = await cloud.download_media(channel, part.get("id"))
+                    media_info = media.store_incoming(channel.tenant_id, data, part.get("mime_type") or mime,
+                                                      part.get("filename"), voice=bool(part.get("voice")))
+                except Exception:
+                    text = text or f"[{kind} recebido, mas não foi possível baixar o arquivo]"
             else:
-                text = f"[{m.get('type', 'mensagem')} não suportado ainda]"
-            await _store_inbound(s, channel, m["from"], names.get(m["from"]), text, m["id"])
+                text = f"[{kind or 'mensagem'} não suportado ainda]"
+            await _store_inbound(s, channel, m["from"], names.get(m["from"]), text, m["id"],
+                                 media_info=media_info, reply_wamid=reply_wamid)
         for st in value.get("statuses", []):
             await _apply_status(s, channel.tenant_id, st)
 
 
-async def _store_inbound(s: AsyncSession, channel: Channel, phone, name, text, wamid, wa_jid=None) -> bool:
-    res = await handle_inbound(s, channel, phone, name, text, wamid, wa_jid)
+async def customer_action(s: AsyncSession, tenant_id: str, wamid: str | None, action: str, text: str = "", emoji: str = "") -> bool:
+    """O cliente apagou, editou ou reagiu a uma mensagem no WhatsApp dele: refletimos aqui."""
+    if not wamid:
+        return False
+    msg = (await s.execute(select(Message).where(Message.wamid == wamid, Message.tenant_id == tenant_id))).scalar_one_or_none()
+    if msg is None:
+        return False
+    if action == "revoke" and msg.direction == "in":
+        msg.deleted_at, msg.deleted_by = utcnow(), "cliente"
+    elif action == "edit" and msg.direction == "in" and text:
+        msg.body, msg.edited_at = text, utcnow()
+    elif action == "react":
+        r = json.loads(msg.reactions or "{}")
+        if emoji:
+            r["cliente"] = emoji
+        else:
+            r.pop("cliente", None)
+        msg.reactions = json.dumps(r, ensure_ascii=False)
+    else:
+        return False
+    await s.commit()
+    await hub.publish(tenant_id, {"type": "message.status", "message": msg_out(msg)})
+    return True
+
+
+async def _store_inbound(s: AsyncSession, channel: Channel, phone, name, text, wamid, wa_jid=None,
+                         media_info: dict | None = None, reply_wamid: str | None = None) -> bool:
+    res = await handle_inbound(s, channel, phone, name, text, wamid, wa_jid, media=media_info, reply_wamid=reply_wamid)
     if res is None:
         return False
     conv, msg = res
     contact = await s.get(Contact, conv.contact_id)
     await hub.publish(channel.tenant_id, {"type": "message.new", "message": msg_out(msg)})
-    bot_msgs = await assistant.on_inbound(s, conv, contact, text)  # assistente jurídico (se ligado)
+    ai_text = text or ("[o cliente mandou um áudio]" if media_info and media_info["kind"] == "audio" else "[o cliente mandou um arquivo]")
+    bot_msgs = await assistant.on_inbound(s, conv, contact, ai_text)  # assistente jurídico (se ligado)
     for m in bot_msgs:
         await hub.publish(channel.tenant_id, {"type": "message.new", "message": msg_out(m)})
     await hub.publish(
@@ -103,8 +152,20 @@ async def _apply_status(s: AsyncSession, tenant_id: str, st: dict) -> None:
 class SimulateIn(BaseModel):
     phone: str
     name: str | None = None
-    text: str
+    text: str = ""
     wamid: str | None = None
+    media_b64: str | None = None  # cliente de teste mandando foto/áudio/documento
+    media_mime: str | None = None
+    media_name: str | None = None
+    voice: bool = False
+    reply_to_wamid: str | None = None
+
+
+class CustomerActionIn(BaseModel):
+    message_id: str
+    action: str  # revoke | edit | react
+    text: str = ""
+    emoji: str = ""
 
 
 @router.post("/dev/inbound", status_code=201)
@@ -121,5 +182,26 @@ async def simulate_inbound(body: SimulateIn, user: User = Depends(current_user),
         raise HTTPException(409, "conecte um número de teste antes de simular clientes")
     from ..models import uid
 
-    created = await _store_inbound(s, channel, body.phone, body.name, body.text, body.wamid or f"sim.{uid()}")
+    media_info = None
+    if body.media_b64:
+        try:
+            media_info = media.store_incoming(user.tenant_id, base64.b64decode(body.media_b64), body.media_mime or "",
+                                              body.media_name, body.voice)
+        except (ValueError, media.MediaError) as e:
+            raise HTTPException(422, f"arquivo inválido: {e}")
+    if not body.text and not media_info:
+        raise HTTPException(422, "mande um texto ou um arquivo")
+    created = await _store_inbound(s, channel, body.phone, body.name, body.text, body.wamid or f"sim.{uid()}",
+                                   media_info=media_info, reply_wamid=body.reply_to_wamid)
     return {"created": created}
+
+
+@router.post("/dev/customer-action")
+async def simulate_customer_action(body: CustomerActionIn, user: User = Depends(current_user), s: AsyncSession = Depends(get_db)):
+    """Simula o cliente apagando, editando ou reagindo (só em TEST_MODE)."""
+    if not settings.test_mode:
+        raise HTTPException(404)
+    m = await s.get(Message, body.message_id)
+    if m is None or m.tenant_id != user.tenant_id or not m.wamid:
+        raise HTTPException(404, "mensagem não encontrada")
+    return {"applied": await customer_action(s, user.tenant_id, m.wamid, body.action, body.text, body.emoji)}

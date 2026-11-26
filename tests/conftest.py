@@ -5,6 +5,7 @@ _tmp = tempfile.mkdtemp()
 os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{_tmp}/test.db"
 os.environ["RUN_WORKER"] = "false"
 os.environ["TEST_MODE"] = "true"
+os.environ["MEDIA_DIR"] = f"{_tmp}/media"  # arquivos dos testes fora do projeto
 os.environ["WHATSAPP_VERIFY_TOKEN"] = "dev-verify"  # os testes não dependem do .env local
 os.environ["WHATSAPP_APP_SECRET"] = ""
 os.environ["BRIDGE_SECRET"] = "segredo-da-ponte-so-para-testes"

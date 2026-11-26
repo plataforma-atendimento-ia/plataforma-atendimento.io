@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     outbox_backoff_seconds: list[int] = [1, 5, 30, 120, 600]
     sending_timeout_seconds: int = 120
 
+    # Arquivos das conversas (fora do Git; em produção, um disco persistente ou armazenamento S3)
+    media_dir: str = "./data/media"
+    edit_window_minutes: int = 15  # mesma regra do WhatsApp
+    delete_window_hours: int = 48  # "apagar para todos"
+
     # Ponte NÃO OFICIAL por QR Code (pasta bridge/). Sem BRIDGE_SECRET o recurso fica desligado.
     bridge_url: str = "http://127.0.0.1:8788"
     bridge_secret: str = ""
