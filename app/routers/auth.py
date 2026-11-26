@@ -59,10 +59,14 @@ async def register(body: RegisterIn, s: AsyncSession = Depends(get_db)):
     )
     s.add(user)
     try:
-        await s.commit()
+        await s.flush()
     except IntegrityError:
         await s.rollback()
         raise HTTPException(409, "e-mail já cadastrado")
+    from .office import ensure_default_departments
+
+    await ensure_default_departments(s, tenant.id)  # setores padrão de escritório de advocacia
+    await s.commit()
     return {"token": make_token(user.id, tenant.id), "user": user_out(user)}
 
 

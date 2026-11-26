@@ -10,7 +10,7 @@ from .config import settings
 from .db import init_models
 from .outbox import run_worker
 from .realtime import hub
-from .routers import auth, bridge, inbox, webhooks
+from .routers import auth, bridge, inbox, office, webhooks
 from .security import decode_token
 
 
@@ -28,6 +28,7 @@ app.include_router(auth.router)
 app.include_router(inbox.router)
 app.include_router(webhooks.router)
 app.include_router(bridge.router)
+app.include_router(office.router)
 
 
 @app.get("/health")

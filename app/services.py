@@ -33,6 +33,10 @@ def msg_out(m: Message) -> dict:
 def conv_out(c: Conversation, contact: Contact, lead: dict | None = None) -> dict:
     return {
         "lead": lead,
+        "department_id": c.department_id,
+        "routed_by": c.routed_by,
+        "route_note": c.route_note,
+        "ai_state": c.ai_state,
         "id": c.id,
         "status": c.status,
         "assigned_to": c.assigned_to,

@@ -1,4 +1,4 @@
-"""Qualificação automática de leads e conexão de número real (Meta)."""
+"""Automação (liga/desliga, para quando alguém assume) e conexão de número real (Meta)."""
 from sqlalchemy import select
 
 from app.channels import cloud, provider
@@ -29,52 +29,6 @@ async def setup(client):
     admin = await register(client, automation=True)
     await client.post("/channels/test-connect", headers=admin, json={"phone": "5527900000001"})
     return admin
-
-
-async def test_lead_qualification_hot_lead(client):
-    admin = await setup(client)
-    await say(client, admin, "Oi")
-    conv = (await client.get("/conversations", headers=admin)).json()[0]["id"]
-    await say(client, admin, "Marina Souza")
-    await say(client, admin, "Quero um plano para 5 atendentes")
-    await say(client, admin, "1")  # hoje
-    await say(client, admin, "3")  # acima de R$ 2.000
-
-    lead = (await client.get("/conversations", headers=admin)).json()[0]["lead"]
-    assert lead["name"] == "Marina Souza" and lead["interest"].startswith("Quero um plano")
-    assert lead["urgency"] == "hoje" and lead["budget"] == "acima_2000"
-    assert lead["score"] == "quente" and lead["stage"] == "qualificado" and lead["step"] == "done"
-
-    texts = await bot_texts(client, admin, conv)
-    assert len(texts) == 5 and "qual é o seu nome" in texts[0] and "Você está na fila" in texts[-1]
-    # as respostas automáticas saíram de verdade pelo canal
-    assert len(provider.sent) == 5
-    # a conversa continua na fila para um atendente
-    c = (await client.get("/conversations", headers=admin)).json()[0]
-    assert c["status"] == "queue" and c["assigned_to"] is None
-
-
-async def test_lead_score_cold_and_invalid_answer(client):
-    admin = await setup(client)
-    for t in ["Oi", "Paulo", "Só olhando preços"]:
-        await say(client, admin, t)
-    await say(client, admin, "talvez")  # resposta inválida: repete a pergunta
-    conv = (await client.get("/conversations", headers=admin)).json()[0]["id"]
-    assert "Responda 1, 2 ou 3" in (await bot_texts(client, admin, conv))[-1]
-    await say(client, admin, "3")  # sem pressa
-    await say(client, admin, "1")  # até R$ 500
-    assert (await client.get("/conversations", headers=admin)).json()[0]["lead"]["score"] == "frio"
-
-
-async def test_customer_asks_for_human_stops_automation(client):
-    admin = await setup(client)
-    await say(client, admin, "Oi")
-    await say(client, admin, "Quero falar com um atendente")
-    conv = (await client.get("/conversations", headers=admin)).json()[0]["id"]
-    assert "chamando um atendente" in (await bot_texts(client, admin, conv))[-1]
-    before = len(await bot_texts(client, admin, conv))
-    await say(client, admin, "alô?")  # automação já encerrou: não responde mais
-    assert len(await bot_texts(client, admin, conv)) == before
 
 
 async def test_agent_claiming_stops_automation(client):

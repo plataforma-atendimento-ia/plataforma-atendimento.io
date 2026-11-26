@@ -9,3 +9,4 @@ email-validator>=2.2
 greenlet>=3.0
 # produção (Postgres): asyncpg>=0.29
 # testes: pytest, pytest-asyncio
+anthropic>=2.14

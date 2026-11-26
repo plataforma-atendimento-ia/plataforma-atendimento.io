@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..automation import lead_out
 from ..db import utcnow
 from ..deps import current_user, get_db
-from ..models import Contact, Conversation, Lead, Message, User
+from ..models import Contact, Conversation, Department, DepartmentMember, Lead, Message, User
 from ..realtime import hub
 from ..services import claim_conversation, conv_out, conv_payload, msg_out, new_idempotency_key
 
@@ -21,6 +21,30 @@ class SendIn(BaseModel):
 
 class TransferIn(BaseModel):
     user_id: str | None = None  # None devolve à fila
+    department_id: str | None = None  # transferir para a fila de outro setor
+
+
+async def my_departments(s: AsyncSession, user: User) -> set[str] | None:
+    """Setores que a pessoa atende. None = administrador (vê todos)."""
+    if user.role == "admin":
+        return None
+    return set((await s.execute(select(DepartmentMember.department_id).where(DepartmentMember.user_id == user.id))).scalars().all())
+
+
+def _visible(q, user: User, depts: set[str] | None):
+    if depts is None:
+        return q
+    return q.where(
+        or_(
+            Conversation.assigned_to == user.id,
+            Conversation.department_id.in_(depts or {"-"}),
+            Conversation.department_id.is_(None),  # ainda em triagem: qualquer um pode ver
+        )
+    )
+
+
+def can_take(c: Conversation, user: User, depts: set[str] | None) -> bool:
+    return depts is None or c.department_id is None or c.department_id in depts
 
 
 async def _conv(s: AsyncSession, user: User, conv_id: str) -> Conversation:
@@ -42,6 +66,9 @@ async def _publish_conv(s: AsyncSession, c: Conversation, kind: str = "conversat
 async def list_conversations(
     view: str = "all", user: User = Depends(current_user), s: AsyncSession = Depends(get_db)
 ):
+    """view: all (abertas que posso ver) | queue (fila geral dos meus setores) | mine (assumidas por mim)
+    | dept:<id> (fila de um setor) | closed (encerradas)."""
+    depts = await my_departments(s, user)
     q = (
         select(Conversation, Contact)
         .join(Contact, Contact.id == Conversation.contact_id)
@@ -49,20 +76,55 @@ async def list_conversations(
         .order_by(Conversation.last_message_at.desc())
         .limit(200)
     )
-    if view == "queue":
-        q = q.where(Conversation.status == "queue")
-    elif view == "mine":
+    if view == "mine":
         q = q.where(Conversation.assigned_to == user.id, Conversation.status == "open")
+    elif view.startswith("dept:"):
+        dept_id = view[5:]
+        if depts is not None and dept_id not in depts:
+            raise HTTPException(403, "você não atende este setor")
+        q = q.where(Conversation.department_id == dept_id, Conversation.status == "queue")
+    elif view == "queue":
+        q = _visible(q.where(Conversation.status == "queue"), user, depts)
     elif view == "closed":
-        q = q.where(Conversation.status == "closed")
+        q = _visible(q.where(Conversation.status == "closed"), user, depts)
     else:
-        q = q.where(Conversation.status != "closed")
+        q = _visible(q.where(Conversation.status != "closed"), user, depts)
     rows = (await s.execute(q)).all()
     leads = {
         l.contact_id: lead_out(l)
         for l in (await s.execute(select(Lead).where(Lead.tenant_id == user.tenant_id))).scalars().all()
     }
     return [conv_out(c, ct, leads.get(ct.id)) for c, ct in rows]
+
+
+@router.get("/queues")
+async def queues(user: User = Depends(current_user), s: AsyncSession = Depends(get_db)):
+    """Barra lateral: meus atendimentos e as filas dos setores que a pessoa atende (com contagem)."""
+    depts = await my_departments(s, user)
+    mine = (
+        await s.execute(
+            select(func.count()).select_from(Conversation).where(
+                Conversation.tenant_id == user.tenant_id, Conversation.assigned_to == user.id, Conversation.status == "open"
+            )
+        )
+    ).scalar_one()
+    waiting = dict(
+        (
+            await s.execute(
+                select(Conversation.department_id, func.count())
+                .where(Conversation.tenant_id == user.tenant_id, Conversation.status == "queue")
+                .group_by(Conversation.department_id)
+            )
+        ).all()
+    )
+    dq = select(Department).where(Department.tenant_id == user.tenant_id, Department.active.is_(True)).order_by(Department.position)
+    if depts is not None:
+        dq = dq.where(Department.id.in_(depts or {"-"}))
+    sectors = [
+        {"id": d.id, "name": d.name, "color": d.color, "waiting": waiting.get(d.id, 0), "owner_user_id": d.owner_user_id}
+        for d in (await s.execute(dq)).scalars().all()
+    ]
+    return {"mine": mine, "triage": waiting.get(None, 0), "sectors": sectors, "is_admin": depts is None}
 
 
 @router.get("/conversations/{conv_id}/messages")
@@ -81,6 +143,8 @@ async def list_messages(conv_id: str, user: User = Depends(current_user), s: Asy
 @router.post("/conversations/{conv_id}/claim")
 async def claim(conv_id: str, user: User = Depends(current_user), s: AsyncSession = Depends(get_db)):
     c = await _conv(s, user, conv_id)
+    if not can_take(c, user, await my_departments(s, user)):
+        raise HTTPException(403, "esta conversa é de um setor que você não atende")
     open_count = (
         await s.execute(
             select(func.count()).select_from(Conversation).where(
@@ -103,19 +167,29 @@ async def claim(conv_id: str, user: User = Depends(current_user), s: AsyncSessio
 async def transfer(
     conv_id: str, body: TransferIn, user: User = Depends(current_user), s: AsyncSession = Depends(get_db)
 ):
+    """Transfere para uma pessoa, para a fila de outro setor, ou devolve à fila."""
     c = await _conv(s, user, conv_id)
     if user.role != "admin" and c.assigned_to != user.id:
         raise HTTPException(403, "só o responsável ou um admin pode transferir")
-    new_status = "queue"
+    values = {"version": Conversation.version + 1, "routed_by": "usuario"}
+    if body.department_id:
+        dept = await s.get(Department, body.department_id)
+        if dept is None or dept.tenant_id != user.tenant_id or not dept.active:
+            raise HTTPException(404, "setor não encontrado")
+        values.update(department_id=dept.id, route_note=f"{dept.name}: transferido por {user.name}"[:300])
+        if dept.owner_user_id and not body.user_id:  # setor com responsável direto
+            values.update(assigned_to=dept.owner_user_id, status="open")
+        else:
+            values.update(assigned_to=None, status="queue")
     if body.user_id:
         target = await s.get(User, body.user_id)
         if target is None or target.tenant_id != user.tenant_id:
             raise HTTPException(404, "atendente não encontrado")
-        new_status = "open"
+        values.update(assigned_to=target.id, status="open")
+    elif not body.department_id:
+        values.update(assigned_to=None, status="queue")
     await s.execute(
-        update(Conversation)
-        .where(Conversation.id == conv_id, Conversation.tenant_id == user.tenant_id)
-        .values(assigned_to=body.user_id, status=new_status, version=Conversation.version + 1)
+        update(Conversation).where(Conversation.id == conv_id, Conversation.tenant_id == user.tenant_id).values(**values)
     )
     await s.commit()
     await s.refresh(c)

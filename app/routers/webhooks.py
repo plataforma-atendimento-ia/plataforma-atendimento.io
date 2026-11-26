@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .. import automation
+from .. import assistant
 from ..config import settings
 from ..db import SessionLocal
 from ..deps import current_user, get_db
@@ -72,7 +72,7 @@ async def _store_inbound(s: AsyncSession, channel: Channel, phone, name, text, w
     conv, msg = res
     contact = await s.get(Contact, conv.contact_id)
     await hub.publish(channel.tenant_id, {"type": "message.new", "message": msg_out(msg)})
-    bot_msgs = await automation.on_inbound(s, conv, contact, text)  # roteiro de qualificação (se ligado)
+    bot_msgs = await assistant.on_inbound(s, conv, contact, text)  # assistente jurídico (se ligado)
     for m in bot_msgs:
         await hub.publish(channel.tenant_id, {"type": "message.new", "message": msg_out(m)})
     await hub.publish(
