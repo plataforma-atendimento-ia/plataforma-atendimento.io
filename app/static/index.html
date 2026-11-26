@@ -150,6 +150,34 @@ label.f{display:grid;gap:5px;font-size:12.5px;color:var(--mute);font-weight:500}
 .m.out.bot{background:var(--paper-2);color:var(--ink);border-color:var(--line);border-style:dashed}
 .m.failed{background:var(--bad-soft)!important;color:var(--bad)!important;border-color:var(--bad)!important}
 .m .meta{font-size:11.5px;opacity:.75;margin-top:4px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.mwrap{display:flex;flex-direction:column;align-items:flex-start;position:relative;max-width:100%} .mwrap.out{align-items:flex-end}
+.mwrap .m{max-width:min(560px,78%)} .mwrap.flash .m{box-shadow:0 0 0 3px var(--signal)}
+.mt{white-space:pre-wrap} .m.isdel{opacity:.75} .del{font-size:13.5px}
+.macts{display:none;gap:2px;margin-top:2px;background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:2px 4px}
+.macts button{border:0;background:transparent;padding:3px 7px;border-radius:999px;font-size:14px;line-height:1}
+.macts button:hover{background:var(--paper-2)} .mwrap:hover .macts,.mwrap:focus-within .macts{display:flex}
+@media (hover:none){.macts{display:flex}}
+.epick{position:absolute;bottom:100%;display:flex;gap:2px;background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:4px;box-shadow:var(--shadow);z-index:5}
+.epick button{border:0;background:transparent;font-size:20px;padding:4px 6px;border-radius:999px} .epick button.on,.epick button:hover{background:var(--soft)}
+.reacts{display:flex;gap:4px;margin-top:-6px;z-index:1} .reacts span{background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:1px 7px;font-size:13px}
+.quote{display:grid;gap:1px;text-align:left;width:100%;border:0;border-left:4px solid var(--signal);background:rgba(127,127,127,.12);border-radius:8px;padding:6px 9px;margin-bottom:6px;font-size:12.5px;color:inherit}
+.quote b{font-size:12.5px} .quote span{opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mimg{display:block;max-width:100%;max-height:320px;border-radius:10px;margin-bottom:4px;background:var(--paper-2)}
+.mvid{display:block;max-width:100%;max-height:320px;border-radius:10px;margin-bottom:4px;background:#000}
+.maud{display:flex;align-items:center;gap:8px;margin-bottom:2px} .maud audio{height:36px;max-width:240px}
+.mdoc{display:flex;gap:10px;align-items:center;text-decoration:none;color:inherit;background:rgba(127,127,127,.12);border-radius:10px;padding:8px 10px;margin-bottom:4px}
+.mdoc .ic{font-size:26px} .mdoc span{display:grid} .mdoc small{opacity:.8}
+.rnote{font-size:11.5px;margin-top:4px;padding:4px 7px;border-radius:6px;background:var(--warn-soft);color:var(--warn)}
+.m.out .rnote{background:rgba(255,255,255,.14);color:inherit}
+.ctxbar{display:flex;align-items:center;gap:10px;padding:8px 18px;background:var(--paper);border-top:1px solid var(--line)}
+.ctxin{display:grid;gap:1px;min-width:0;flex:1;border-left:4px solid var(--signal);padding-left:9px;font-size:13px} .ctxin span{color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fthumb{width:48px;height:48px;object-fit:cover;border-radius:8px} .ficon{font-size:28px}
+.attach{position:relative} .icon{font-size:18px;padding:7px 10px}
+.amenu{position:absolute;bottom:46px;left:0;background:var(--paper);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:6px;display:grid;min-width:200px;z-index:10}
+.amenu label{padding:9px 12px;border-radius:8px;cursor:pointer;font-size:14px} .amenu label:hover{background:var(--paper-2)}
+.rec{display:flex;align-items:center;gap:10px;padding:12px 18px;background:var(--paper);border-top:1px solid var(--line)}
+.recdot{width:12px;height:12px;border-radius:50%;background:var(--bad);animation:pulse 1s infinite} @keyframes pulse{50%{opacity:.3}}
+.clip{cursor:pointer;font-size:16px;padding:2px 6px}
 .daysep{align-self:center;font-size:11.5px;color:var(--mute);margin:6px 0}
 .comp{padding:12px 18px;background:var(--paper);border-top:1px solid var(--line);display:flex;gap:8px}
 .comp input{flex:1}
@@ -284,8 +312,22 @@ ol.guide{margin:0;padding-left:20px;display:grid;gap:6px}
           </div>
           <div class="route hide" id="cRoute"><svg><use href="#i-route"/></svg><span id="cRouteText"></span></div>
           <div class="msgs" id="msgs"></div>
-          <div class="testbar hide" id="testbar"><span>Teste:</span><input id="custText" placeholder="Escrever como se fosse o cliente…"><button class="sm" id="btnCust">Enviar como cliente</button></div>
-          <div class="comp"><input id="text" placeholder="Escreva a resposta…" aria-label="Resposta"><button class="primary" id="btnSend">Enviar</button></div>
+          <div class="testbar hide" id="testbar"><span>Teste (como o cliente):</span><input id="custText" placeholder="Escrever como se fosse o cliente…">
+            <label class="clip" title="Cliente manda foto, vídeo ou documento"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l7.9-7.9"/></svg><input type="file" id="custFile" hidden accept="image/jpeg,image/png,image/webp,video/mp4,application/pdf,audio/ogg,audio/mpeg"></label><small id="custFileName" class="muted"></small>
+            <button class="sm" id="btnCust">Enviar como cliente</button></div>
+          <div class="ctxbar hide" id="ctxBar"></div>
+          <div class="comp" id="comp">
+            <div class="attach"><button class="ghost icon" id="btnAttach" title="Anexar" aria-label="Anexar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l7.9-7.9"/></svg></button>
+              <div class="amenu hide" id="amenu">
+                <label>🖼️ Foto ou vídeo<input type="file" id="fMedia" hidden accept="image/jpeg,image/png,image/webp,video/mp4,video/3gpp"></label>
+                <label>📄 Documento<input type="file" id="fDoc" hidden accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip"></label>
+                <label>🎵 Arquivo de áudio<input type="file" id="fAudio" hidden accept="audio/ogg,audio/mpeg,audio/mp4,audio/aac,audio/amr,audio/x-m4a"></label>
+              </div></div>
+            <input id="text" placeholder="Escreva a resposta…" aria-label="Resposta" autocomplete="off">
+            <button class="go icon" id="btnMic" title="Gravar áudio" aria-label="Gravar áudio">🎤</button>
+            <button class="primary hide" id="btnSend">Enviar</button>
+          </div>
+          <div class="rec hide" id="rec"><span class="recdot"></span><b id="recTime">0:00</b><span class="muted small">Gravando…</span><span style="flex:1"></span><button class="sm" id="recCancel">Cancelar</button><button class="go sm" id="recSend">Enviar áudio</button></div>
         </div>
       </div>
       <aside class="det" id="det"><div class="empty small" style="padding:0">A ficha do cliente aparece aqui.</div></aside>
@@ -675,37 +717,174 @@ function renderHead() {
   $('cRoute').classList.toggle('hide', !c.route_note);
   $('cRouteText').innerHTML = c.route_note ? `${c.routed_by === 'ia' ? '<b>Encaminhado pela IA</b> · ' : '<b>Transferido</b> · '}${esc(c.route_note)}` : '';
   const canWrite = c.assigned_to === S.me.id && c.status === 'open';
-  $('text').disabled = $('btnSend').disabled = !canWrite;
+  $('text').disabled = $('btnSend').disabled = $('btnMic').disabled = $('btnAttach').disabled = !canWrite;
+  if (!canWrite) { S.reply = null; S.edit = null; S.file = null; } renderCtx();
   $('text').placeholder = canWrite ? 'Escreva a resposta…' : c.status === 'queue' ? 'Assuma o atendimento para responder' : 'Somente quem assumiu pode responder';
   const testCh = (S.ob?.channels || []).some(x => x.is_test) && S.ob?.test_mode;
   $('testbar').classList.toggle('hide', !testCh);
+}
+$('btnClaim').onclick = async () => { try { S.sel = await api(`/conversations/${S.sel.id}/claim`, { method:'POST' }); renderHead(); renderDetails(); await loadQueues(); loadList(); toast('Atendimento assumido. Ele está em "Meus atendimentos".'); } catch (e) { toast(e.message); loadList(); } };
+$('btnClose').onclick = async () => { try { S.sel = await api(`/conversations/${S.sel.id}/close`, { method:'POST' }); renderHead(); await loadQueues(); loadList(); } catch (e) { toast(e.message); } };
+$('btnDetails').onclick = () => $('det').classList.toggle('force');
+// ---------- conversa no estilo WhatsApp: anexos, áudio, responder, editar, apagar, reagir ----------
+const EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+const EDIT_MIN = 15, DELETE_H = 48;
+S.reply = null; S.edit = null; S.file = null; S.rec = null;
+const ageMin = m => (Date.now() - new Date(m.created_at + 'Z')) / 60000;
+const fmtSize = b => !b ? '' : b < 1024 * 1024 ? Math.max(1, Math.round(b / 1024)) + ' KB' : (b / 1024 / 1024).toFixed(1).replace('.', ',') + ' MB';
+const iAmOwnerOf = m => m.direction === 'out' && (m.sender_user_id === S.me.id || S.me.role === 'admin');
+const canAct = () => S.sel && S.sel.assigned_to === S.me.id && S.sel.status === 'open';
+const canEdit = m => canAct() && iAmOwnerOf(m) && m.kind === 'text' && !m.deleted && ageMin(m) <= EDIT_MIN && m.sender_user_id;
+const canDelete = m => iAmOwnerOf(m) && !m.deleted && ageMin(m) <= DELETE_H * 60 && !['canceled'].includes(m.status);
+function snippet(q) {
+  if (!q) return '';
+  if (q.deleted) return 'Mensagem apagada';
+  if (q.kind === 'text') return q.body.slice(0, 90);
+  const label = { image: '📷 Foto', video: '🎬 Vídeo', audio: q.voice ? '🎤 Mensagem de voz' : '🎵 Áudio', document: '📄 ' + (q.media_name || 'Documento') }[q.kind] || 'Arquivo';
+  return label + (q.body ? ': ' + q.body.slice(0, 60) : '');
+}
+function authorOf(m) { return m.direction === 'in' ? (S.sel?.contact.name || 'Cliente') : m.sender_user_id ? pname(person(m.sender_user_id)) : 'Assistente'; }
+function mediaHtml(m) {
+  if (!m.media_url) return '';
+  const u = m.media_url + '?token=' + encodeURIComponent(S.token);
+  if (m.kind === 'image') return `<a href="${u}" target="_blank" rel="noopener"><img class="mimg" src="${u}" alt="Foto enviada" loading="lazy"></a>`;
+  if (m.kind === 'video') return `<video class="mvid" src="${u}" controls preload="metadata"></video>`;
+  if (m.kind === 'audio') return `<div class="maud"><span>${m.voice ? '🎤' : '🎵'}</span><audio src="${u}" controls preload="metadata"></audio></div>`;
+  return `<a class="mdoc" href="${u}" target="_blank" rel="noopener"><span class="ic">📄</span><span><b>${esc(m.media_name || 'Documento')}</b><small>${fmtSize(m.media_size)} · abrir</small></span></a>`;
 }
 function renderMsgs() {
   let lastDay = '';
   $('msgs').innerHTML = S.msgs.map(m => {
     const day = new Date(m.created_at + 'Z').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'2-digit' });
     const sep = day !== lastDay ? `<div class="daysep">${esc(day)}</div>` : ''; lastDay = day;
-    const bot = m.direction === 'out' && !m.sender_user_id, who = m.sender_user_id ? pname(person(m.sender_user_id)) : bot ? 'Assistente' : '';
-    const meta = m.direction === 'out' ? `<div class="meta">${esc(who)} · ${hhmm(m.created_at)} · ${STATUS[m.status] || esc(m.status)}${m.status === 'failed' ? ` — ${esc(m.error || '')} <button class="sm" data-resend="${m.id}">Reenviar</button>` : ''}</div>` : `<div class="meta">${hhmm(m.created_at)}</div>`;
-    return sep + `<div class="m ${m.direction === 'out' ? 'out' : ''} ${bot ? 'bot' : ''} ${m.status === 'failed' ? 'failed' : ''}" id="m${m.id}">${esc(m.body)}${meta}</div>`;
+    const out = m.direction === 'out', bot = out && !m.sender_user_id;
+    const q = m.reply_to_id ? S.msgs.find(x => x.id === m.reply_to_id) : null;
+    const quote = q ? `<button class="quote" data-jump="${q.id}"><b>${esc(authorOf(q))}</b><span>${esc(snippet(q))}</span></button>` : '';
+    const content = m.deleted ? `<i class="del">🚫 ${out ? 'Você apagou esta mensagem' : 'O cliente apagou esta mensagem'}</i>`
+      : quote + mediaHtml(m) + (m.body ? `<div class="mt">${esc(m.body)}</div>` : '');
+    const status = out ? ` · ${STATUS[m.status] || (m.status === 'canceled' ? 'cancelada' : esc(m.status))}` : '';
+    const meta = `<div class="meta">${out ? esc(authorOf(m)) + ' · ' : ''}${hhmm(m.created_at)}${m.edited && !m.deleted ? ' · editada' : ''}${status}${m.status === 'failed' ? ` — ${esc(m.error || '')} <button class="sm" data-resend="${m.id}">Reenviar</button>` : ''}</div>`;
+    const note = m.remote_note ? `<div class="rnote">⚠ ${esc(m.remote_note)}</div>` : '';
+    const counts = {}; Object.values(m.reactions || {}).forEach(e => counts[e] = (counts[e] || 0) + 1);
+    const reacts = Object.keys(counts).length ? `<div class="reacts">${Object.entries(counts).map(([e, n]) => `<span>${e}${n > 1 ? ' ' + n : ''}</span>`).join('')}</div>` : '';
+    const acts = m.deleted ? '' : `<div class="macts">${canAct() ? `<button title="Responder" data-act="reply" data-id="${m.id}">↩</button><button title="Reagir" data-act="react" data-id="${m.id}">☺</button>` : ''}${canEdit(m) ? `<button title="Editar (até ${EDIT_MIN} min)" data-act="edit" data-id="${m.id}">✎</button>` : ''}${canDelete(m) ? `<button title="Apagar para todos" data-act="del" data-id="${m.id}">🗑</button>` : ''}${m.body ? `<button title="Copiar texto" data-act="copy" data-id="${m.id}">⧉</button>` : ''}</div>`;
+    return sep + `<div class="mwrap ${out ? 'out' : ''}" id="w${m.id}"><div class="m ${out ? 'out' : ''} ${bot ? 'bot' : ''} ${m.status === 'failed' ? 'failed' : ''} ${m.deleted ? 'isdel' : ''}" id="m${m.id}">${content}${meta}${note}</div>${acts}${reacts}</div>`;
   }).join('');
-  $('msgs').querySelectorAll('[data-resend]').forEach(b => b.onclick = async () => { try { await api(`/messages/${b.dataset.resend}/resend`, { method:'POST' }); } catch (e) { toast(e.message); } });
-  $('msgs').scrollTop = 1e9;
+  const box = $('msgs');
+  box.querySelectorAll('[data-resend]').forEach(b => b.onclick = async () => { try { await api(`/messages/${b.dataset.resend}/resend`, { method:'POST' }); } catch (e) { toast(e.message); } });
+  box.querySelectorAll('[data-jump]').forEach(b => b.onclick = () => { const el = $('w' + b.dataset.jump); if (el) { el.scrollIntoView({ block:'center', behavior:'smooth' }); el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 1400); } });
+  box.querySelectorAll('[data-act]').forEach(b => b.onclick = e => msgAction(b.dataset.act, b.dataset.id, b, e));
+  box.scrollTop = 1e9;
 }
 function upsertMsg(m) { const i = S.msgs.findIndex(x => x.id === m.id); if (i >= 0) S.msgs[i] = m; else S.msgs.push(m); renderMsgs(); }
-$('btnClaim').onclick = async () => { try { S.sel = await api(`/conversations/${S.sel.id}/claim`, { method:'POST' }); renderHead(); renderDetails(); await loadQueues(); loadList(); toast('Atendimento assumido. Ele está em "Meus atendimentos".'); } catch (e) { toast(e.message); loadList(); } };
-$('btnClose').onclick = async () => { try { S.sel = await api(`/conversations/${S.sel.id}/close`, { method:'POST' }); renderHead(); await loadQueues(); loadList(); } catch (e) { toast(e.message); } };
-$('btnDetails').onclick = () => $('det').classList.toggle('force');
-async function send() {
-  const t = $('text').value.trim(); if (!t || $('text').disabled) return; $('text').value = '';
-  try { upsertMsg(await api(`/conversations/${S.sel.id}/messages`, { method:'POST', body:{ body:t, client_id: crypto.randomUUID() } })); } catch (e) { toast(e.message); $('text').value = t; }
+
+async function msgAction(act, id, btn) {
+  const m = S.msgs.find(x => x.id === id); if (!m) return;
+  if (act === 'reply') { S.reply = m; S.edit = null; renderCtx(); $('text').focus(); }
+  if (act === 'edit') { S.edit = m; S.reply = null; clearFile(); $('text').value = m.body; renderCtx(); $('text').focus(); }
+  if (act === 'copy') { try { await navigator.clipboard.writeText(m.body); toast('Texto copiado'); } catch { toast('Selecione o texto para copiar'); } }
+  if (act === 'react') {
+    document.querySelectorAll('.epick').forEach(x => x.remove());
+    const mine = (m.reactions || {})[S.me.id];
+    const pick = document.createElement('div'); pick.className = 'epick';
+    pick.innerHTML = EMOJIS.map(e => `<button class="${e === mine ? 'on' : ''}" data-e="${e}">${e}</button>`).join('');
+    btn.parentNode.appendChild(pick);
+    pick.querySelectorAll('[data-e]').forEach(b => b.onclick = async () => { pick.remove(); try { upsertMsg(await api(`/messages/${id}/react`, { method:'POST', body:{ emoji: b.dataset.e === mine ? '' : b.dataset.e } })); } catch (e) { toast(e.message); } });
+    setTimeout(() => document.addEventListener('click', function off(ev) { if (!pick.contains(ev.target)) { pick.remove(); document.removeEventListener('click', off); } }), 0);
+  }
+  if (act === 'del') {
+    modal(`<h2>Apagar para todos?</h2><p style="margin:0">A mensagem some para o cliente e aqui fica "Você apagou esta mensagem". O WhatsApp só permite isso até ${DELETE_H} horas depois do envio.</p>
+      <p class="small muted" style="margin:0">Em números conectados pela API oficial da Meta não é possível apagar no celular do cliente: ela some só aqui, e o sistema avisa.</p>
+      <div class="row-end"><button data-close>Cancelar</button><button class="primary" id="delGo" style="background:var(--bad);border-color:var(--bad)">Apagar para todos</button></div>`);
+    $('delGo').onclick = async () => { try { upsertMsg(await api(`/messages/${id}`, { method:'DELETE' })); closeModal(); } catch (e) { toast(e.message); } };
+  }
 }
-$('btnSend').onclick = send; $('text').onkeydown = e => { if (e.key === 'Enter') send(); };
+
+// barra acima do campo: respondendo, editando ou arquivo escolhido
+function renderCtx() {
+  const bar = $('ctxBar');
+  if (S.edit) bar.innerHTML = `<div class="ctxin"><b>Editando mensagem</b><span>Você pode editar até ${EDIT_MIN} minutos depois do envio.</span></div><button class="ghost sm" id="ctxX" aria-label="Cancelar edição">✕</button>`;
+  else if (S.file) {
+    const f = S.file, isImg = f.type.startsWith('image/'), url = isImg ? URL.createObjectURL(f) : '';
+    bar.innerHTML = `${isImg ? `<img class="fthumb" src="${url}" alt="">` : `<span class="ficon">${f.type.startsWith('video/') ? '🎬' : f.type.startsWith('audio/') ? '🎵' : '📄'}</span>`}<div class="ctxin"><b>${esc(f.name)}</b><span>${fmtSize(f.size)} · escreva uma legenda (opcional) e envie</span>${S.reply ? `<span>Respondendo a ${esc(authorOf(S.reply))}</span>` : ''}</div><button class="ghost sm" id="ctxX" aria-label="Remover arquivo">✕</button>`;
+  } else if (S.reply) bar.innerHTML = `<div class="ctxin quote-in"><b>Respondendo a ${esc(authorOf(S.reply))}</b><span>${esc(snippet(S.reply))}</span></div><button class="ghost sm" id="ctxX" aria-label="Cancelar resposta">✕</button>`;
+  bar.classList.toggle('hide', !(S.edit || S.file || S.reply));
+  if ($('ctxX')) $('ctxX').onclick = () => { if (S.edit) $('text').value = ''; S.edit = null; if (S.file) clearFile(); else S.reply = null; renderCtx(); };
+  syncSendMic();
+}
+function clearFile() { S.file = null; ['fMedia', 'fDoc', 'fAudio'].forEach(id => $(id).value = ''); }
+function syncSendMic() {
+  const hasText = $('text').value.trim().length > 0, sendMode = hasText || S.file || S.edit;
+  $('btnSend').classList.toggle('hide', !sendMode); $('btnMic').classList.toggle('hide', !!sendMode);
+  $('btnSend').textContent = S.edit ? 'Salvar' : 'Enviar';
+}
+$('text').addEventListener('input', syncSendMic);
+$('btnAttach').onclick = e => { e.stopPropagation(); $('amenu').classList.toggle('hide'); };
+document.addEventListener('click', e => { if (!$('amenu').contains(e.target) && e.target !== $('btnAttach')) $('amenu').classList.add('hide'); });
+['fMedia', 'fDoc', 'fAudio'].forEach(id => $(id).onchange = () => { const f = $(id).files[0]; $('amenu').classList.add('hide'); if (!f) return; S.file = f; S.edit = null; renderCtx(); $('text').focus(); });
+
+async function upload(file, extra) {
+  const fd = new FormData(); fd.append('file', file, file.name || 'arquivo');
+  Object.entries(extra).forEach(([k, v]) => { if (v != null && v !== '') fd.append(k, v); });
+  const r = await fetch(`/conversations/${S.sel.id}/attachments`, { method:'POST', headers:{ Authorization:'Bearer ' + S.token }, body: fd });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(typeof d.detail === 'string' ? d.detail : 'Erro ' + r.status);
+  return d;
+}
+async function send() {
+  if ($('text').disabled) return;
+  const t = $('text').value.trim();
+  try {
+    if (S.edit) { if (!t) return; upsertMsg(await api(`/messages/${S.edit.id}`, { method:'PATCH', body:{ body:t } })); S.edit = null; }
+    else if (S.file) {
+      const btn = $('btnSend'); btn.disabled = true; btn.textContent = 'Enviando…';
+      try { upsertMsg(await upload(S.file, { caption:t, client_id: crypto.randomUUID(), reply_to_id: S.reply?.id })); } finally { btn.disabled = false; }
+      clearFile(); S.reply = null;
+    } else { if (!t) return; upsertMsg(await api(`/conversations/${S.sel.id}/messages`, { method:'POST', body:{ body:t, client_id: crypto.randomUUID(), reply_to_id: S.reply?.id || null } })); S.reply = null; }
+    $('text').value = ''; renderCtx();
+  } catch (e) { toast(e.message); syncSendMic(); }
+}
+$('btnSend').onclick = send; $('text').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } if (e.key === 'Escape') { S.edit = null; S.reply = null; renderCtx(); } };
+
+// gravar áudio (vira mensagem de voz no WhatsApp)
+$('btnMic').onclick = async () => {
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) { toast('Este navegador não grava áudio. Use o Chrome ou o Edge.'); return; }
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch { toast('Permita o uso do microfone no navegador para gravar áudio.'); return; }
+  const type = ['audio/ogg;codecs=opus', 'audio/webm;codecs=opus', 'audio/webm'].find(t => MediaRecorder.isTypeSupported(t)) || '';
+  const mr = new MediaRecorder(stream, type ? { mimeType: type } : {});
+  S.rec = { mr, chunks: [], stream, t0: Date.now(), send: false };
+  mr.ondataavailable = e => { if (e.data.size) S.rec.chunks.push(e.data); };
+  mr.onstop = async () => {
+    const rec = S.rec; S.rec = null; clearInterval(rec.timer); rec.stream.getTracks().forEach(t => t.stop());
+    $('rec').classList.add('hide'); $('comp').classList.remove('hide');
+    if (!rec.send || !rec.chunks.length) return;
+    const mime = (mr.mimeType || 'audio/webm').split(';')[0];
+    const file = new File([new Blob(rec.chunks, { type: mime })], 'audio.' + (mime.includes('ogg') ? 'ogg' : 'webm'), { type: mime });
+    try { upsertMsg(await upload(file, { voice:'true', client_id: crypto.randomUUID(), reply_to_id: S.reply?.id })); S.reply = null; renderCtx(); }
+    catch (e) { toast(e.message); }
+  };
+  mr.start(250);
+  $('comp').classList.add('hide'); $('rec').classList.remove('hide'); $('recTime').textContent = '0:00';
+  S.rec.timer = setInterval(() => { const s = Math.floor((Date.now() - S.rec.t0) / 1000); $('recTime').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; if (s >= 300) { S.rec.send = true; S.rec.mr.stop(); } }, 250);
+};
+$('recCancel').onclick = () => { if (S.rec) { S.rec.send = false; S.rec.mr.stop(); } };
+$('recSend').onclick = () => { if (S.rec) { S.rec.send = true; S.rec.mr.stop(); } };
+
+// barra de teste: falar como o cliente (texto ou arquivo)
 async function custSend() {
-  const t = $('custText').value.trim(); if (!t || !S.sel) return; $('custText').value = '';
-  try { await api('/dev/inbound', { method:'POST', body:{ phone:S.sel.contact.phone, name:S.sel.contact.name, text:t } }); } catch (e) { toast(e.message); }
+  const t = $('custText').value.trim(), f = $('custFile').files[0]; if ((!t && !f) || !S.sel) return;
+  const body = { phone:S.sel.contact.phone, name:S.sel.contact.name, text:t };
+  if (f) {
+    if (f.size > 16 * 1024 * 1024) { toast('Arquivo grande demais para o teste (até 16 MB)'); return; }
+    body.media_b64 = await new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = bad; r.readAsDataURL(f); });
+    body.media_mime = f.type; body.media_name = f.name;
+  }
+  try { await api('/dev/inbound', { method:'POST', body }); $('custText').value = ''; $('custFile').value = ''; $('custFileName').textContent = ''; } catch (e) { toast(e.message); }
 }
 $('btnCust').onclick = custSend; $('custText').onkeydown = e => { if (e.key === 'Enter') custSend(); };
+$('custFile').onchange = () => { $('custFileName').textContent = $('custFile').files[0]?.name || ''; };
 
 $('btnTransfer').onclick = () => {
   const c = S.sel;
